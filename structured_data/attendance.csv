@@ -1,0 +1,143 @@
+,,,,,,,,,,,
+Student Master & Course Attendance Details,,,,,,,,,,,
+,,,,,,,,,,,
+USN,Student Name,Section,Gender,Admission Type,Status,Course Code,Course Name,Credits,Department,Faculty Name,Attendance %
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,100%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,100%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,100%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,75%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,100%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI001,Aarav Sharma,A,Male,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI002,Aditi Rao,A,Female,COMEDK,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,85%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,92%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,95%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,88%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,90%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,85%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI003,Akshat Verma,A,Male,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,90%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,95%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,98%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,92%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,94%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,90%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI004,Ananya Hegde,A,Female,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,95%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,82%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,85%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,80%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,88%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,78%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,90%
+1RV25CI005,Aniruddh Nair,A,Male,Management,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,85%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,98%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,100%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,95%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,96%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,92%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI006,Anusha Kulkarni,A,Female,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,98%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,88%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,90%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,85%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,87%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,82%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,95%
+1RV25CI007,Arjun Mehta,A,Male,COMEDK,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,88%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,94%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,96%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,90%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,92%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,88%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI008,Avani Deshmukh,A,Female,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,94%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,85%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,88%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,82%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,84%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,80%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,90%
+1RV25CI009,Ayush Patel,A,Male,COMEDK,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,86%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,96%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,98%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,94%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,95%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,91%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI010,Bhavana Bhat,A,Female,KCET,Active,CV232TA,Environment and Sustainability,3,CV,Dr. Suresh Chandra,96%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,100%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,100%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,82%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,100%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,100%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI011,Chetan Kumar,B,Male,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,100%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,90%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,92%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,88%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,100%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,100%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,95%
+1RV25CI012,Deepa Shenoy,B,Female,COMEDK,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,90%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,88%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,90%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,85%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,86%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,82%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,90%
+1RV25CI013,Dhruv Joshi,B,Male,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,88%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,95%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,96%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,92%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,94%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,90%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI014,Divya Gowda,B,Female,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,95%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,80%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,82%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,78%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,85%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,75%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,88%
+1RV25CI015,Gautham Reddy,B,Male,Management,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,80%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,96%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,98%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,94%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,95%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,92%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI016,Harshitha Prasad,B,Female,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,96%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,86%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,89%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,84%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,85%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,80%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,92%
+1RV25CI017,Ishaan Gupta,B,Male,COMEDK,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,86%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,94%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,95%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,90%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,92%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,88%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI018,Kavya Srinivas,B,Female,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,94%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,92%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,94%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,88%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,90%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,CS236AT,Quantum Computing Essentials,3,CS,Dr. Anand Swaroop,86%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,95%
+1RV25CI019,Kiran Kumar,B,Male,KCET,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,92%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,MA231TF,Probability and Statistics for Machine Learning and Data Science,4,MA,Dr. Rajesh K,100%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,CS233AI,Data Structures and Applications,4,CS,Dr. Sunitha M,100%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,CI234AI,Design Principles of Cyber Physical Systems,4,CI,Prof. Ramesh Babu,100%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,CS235AT,Operating Systems,3,CS,Dr. Priya Dharshini,100%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,CI238DL,Applied Design Thinking Lab,1,CI,Prof. Sneha K,100%
+1RV25CI020,Likith Shetty,B,Male,COMEDK,Active,ME232TB,Material Science for Engineers,3,ME,Prof. Vikram R,95%
