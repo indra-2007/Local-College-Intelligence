@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Hanken+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-secondary-container":"#00714e","inverse-on-surface":"#f3f0f4","inverse-surface":"#303033","surface-container":"#f0edf1","background":"#fbf8fc","on-secondary-fixed":"#002114","tertiary-fixed":"#e3e1ec","on-primary":"#ffffff","outline":"#8c7071","on-secondary-fixed-variant":"#005137","on-error-container":"#93000a","surface-container-lowest":"#ffffff","surface-dim":"#dcd9dd","tertiary":"#26272f","secondary-fixed":"#85f8c4","on-primary-container":"#ff828a","surface-tint":"#af2b3e","on-background":"#1b1b1e","error":"#ba1a1a","on-tertiary-container":"#a8a7b1","on-primary-fixed":"#40000b","primary-fixed":"#ffdada","surface-variant":"#e4e1e6","on-surface-variant":"#584141","secondary-fixed-dim":"#68dba9","secondary":"#006c4a","primary-container":"#800020","inverse-primary":"#ffb3b5","on-secondary":"#ffffff","surface-bright":"#fbf8fc","on-surface":"#1b1b1e","on-primary-fixed-variant":"#8e0f28","on-error":"#ffffff","surface-container-low":"#f6f2f7","outline-variant":"#e0bfbf","surface-container-highest":"#e4e1e6","primary":"#570013","on-tertiary-fixed-variant":"#46464e","surface-container-high":"#eae7eb","on-tertiary-fixed":"#1a1b22","on-tertiary":"#ffffff","primary-fixed-dim":"#ffb3b5","surface":"#fbf8fc","tertiary-container":"#3c3d45","secondary-container":"#82f5c1","error-container":"#ffdad6","tertiary-fixed-dim":"#c6c5cf"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-tablet":"1.5rem","space-md":"0.75rem","gutter-sm":"1rem","space-xl":"2rem","margin-mobile":"1rem","space-lg":"1.5rem","space-xs":"0.25rem","margin":"2rem","space-sm":"0.5rem","space-2xs":"0.125rem","gutter":"1.5rem","space-base":"1rem","gutter-lg":"2rem","space-2xl":"3rem"},"fontFamily":{"display-lg":["Hanken Grotesk"],"headline-lg-mobile":["Hanken Grotesk"],"headline-xl":["Hanken Grotesk"],"code-sm":["Geist"],"headline-lg":["Hanken Grotesk"],"body-sm":["Geist"],"headline-xl-mobile":["Hanken Grotesk"],"headline-md":["Hanken Grotesk"],"body-md":["Geist"],"label-md":["Geist"],"body-lg":["Geist"],"label-sm":["Geist"],"headline-sm":["Hanken Grotesk"]},"fontSize":{"display-lg":["3.5rem",{"lineHeight":"1.1","letterSpacing":"-0.035em","fontWeight":"700"}],"headline-lg-mobile":["1.5rem",{"lineHeight":"1.25","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-xl":["2.5rem",{"lineHeight":"1.15","letterSpacing":"-0.03em","fontWeight":"600"}],"code-sm":["0.75rem",{"lineHeight":"1.4","letterSpacing":"0.02em","fontWeight":"400"}],"headline-lg":["2rem",{"lineHeight":"1.2","letterSpacing":"-0.025em","fontWeight":"600"}],"body-sm":["0.8125rem",{"lineHeight":"1.45","letterSpacing":"0em","fontWeight":"400"}],"headline-xl-mobile":["2rem",{"lineHeight":"1.2","letterSpacing":"-0.025em","fontWeight":"600"}],"headline-md":["1.5rem",{"lineHeight":"1.3","letterSpacing":"-0.02em","fontWeight":"600"}],"body-md":["0.9375rem",{"lineHeight":"1.5","letterSpacing":"-0.005em","fontWeight":"400"}],"label-md":["0.875rem",{"lineHeight":"1.2","letterSpacing":"-0.005em","fontWeight":"500"}],"body-lg":["1.125rem",{"lineHeight":"1.6","letterSpacing":"-0.01em","fontWeight":"400"}],"label-sm":["0.75rem",{"lineHeight":"1.2","letterSpacing":"0.01em","fontWeight":"500"}],"headline-sm":["1.125rem",{"lineHeight":"1.4","letterSpacing":"-0.015em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 h-16 bg-surface/85 backdrop-blur-xl border-b border-surface-variant z-50"><div class="w-full h-full px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><img alt="Brand logo. - Primary color: #800020
+- Font: hankenGrotesk
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X-f3Zd5H_jVeXeJo6-I4AbVYq1lETC2J6AYeV6jO9duYsSwdXSsqv5_HM73dYt4q8e5kdPjAZmPTaBWoPRF14i0sgf0kvP7sCVPHKcFd0of9deqVS9QZHGzw95ed_Js9Ol0jx2fRZhmJwuN67Uw8szoMAd8C5Jfw7HtIeSL1v4w8kEBA0V1sPpOss6ayHy8wwqTDJna4o1dJTyKQ7_maPGxvAlQS6mnQ-QCTMURe-4m5mX_JH1zA0rrQo"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-none">RVCE Institutional AI</span><span class="font-code-sm text-code-sm text-on-surface-variant mt-space-2xs">Campus Intelligence</span></div></div><div class="flex items-center gap-space-lg"><div class="hidden sm:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-secondary-container/40 border border-secondary"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-sm text-label-sm text-on-secondary-container font-medium">Local AI Online</span></div><div class="flex items-center gap-space-md pl-space-md border-l border-surface-variant"><div class="text-right hidden md:block"><div class="font-label-md text-label-md text-on-surface font-medium leading-tight">Rohan K.</div><div class="font-label-sm text-label-sm text-on-surface-variant">Student • CSE Dept</div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><aside class="fixed left-0 top-16 bottom-0 w-64 bg-surface-container-low border-r border-surface-variant z-40 flex flex-col justify-between p-space-md"><div class="space-y-space-base"><div class="px-space-sm pt-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-medium">Navigation</span></div><nav class="space-y-space-xs flex flex-col" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg shadow-sm"><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-medium rounded-lg shadow-sm" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-md text-label-md">Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="ai-assistant" href="#"><span class="material-symbols-outlined text-[20px]">chat_bubble</span><span class="font-label-md text-label-md">AI Assistant</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="upload-and-documents" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-label-md text-label-md">Upload &amp; Documents</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="chat-history" href="#"><span class="material-symbols-outlined text-[20px]">history</span><span class="font-label-md text-label-md">Chat History</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="academic-regulations" href="#"><span class="material-symbols-outlined text-[20px]">menu_book</span><span class="font-label-md text-label-md">Academic Regulations</span></a></nav></div><div class="p-space-sm rounded-lg bg-surface-container border border-surface-variant"><div class="flex items-center gap-space-xs mb-space-2xs"><span class="material-symbols-outlined text-primary text-[18px]">verified_user</span><span class="font-label-sm text-label-sm font-semibold text-primary">Encrypted Session</span></div><p class="font-code-sm text-code-sm text-on-surface-variant leading-relaxed">On-premise air-gapped compute node. Queries remain institutional.</p></div></aside><div class="pl-64"><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="max-w-7xl mx-auto w-full px-space-base md:px-space-xl py-space-xl space-y-space-xl">
+<!-- Top Greeting & Context Bar -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div class="space-y-space-2xs">
+<div class="inline-flex items-center gap-space-xs px-space-sm py-space-2xs rounded-full bg-surface-container text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-code-sm text-code-sm font-medium tracking-tight">SEM VI • COMPUTER SCIENCE &amp; ENGINEERING</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Good morning, Rohan</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Here is your campus academic summary and offline institutional intelligence.</p>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-space-xs px-space-md py-space-sm rounded-xl bg-surface-container-lowest shadow-sm text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-secondary">verified</span>
+<span class="font-label-sm text-label-sm font-medium">Regulation R-22 Autonomous</span>
+</div>
+</div>
+</div>
+<!-- Central ChatGPT / Notion Style Search & Query Hub -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-md text-[22px] text-on-surface-variant">search</span>
+<input class="w-full pl-12 pr-28 py-3.5 bg-surface-container-low focus:bg-surface-container-lowest text-on-surface rounded-xl font-body-md text-body-md placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-2 focus:ring-primary-container transition-all" id="academicQueryInput" placeholder="Ask anything about your syllabus, attendance, regulations, or exams..." type="text"/>
+<div class="absolute right-space-sm flex items-center gap-space-xs">
+<kbd class="hidden sm:inline-block px-space-xs py-space-2xs font-code-sm text-code-sm bg-surface-container text-on-surface-variant rounded">⌘K</kbd>
+<button class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-container text-on-primary hover:opacity-90 active:scale-95 transition-all" id="sendQueryBtn">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+</button>
+</div>
+</div>
+<!-- Quick Suggested Prompt Chips -->
+<div class="flex flex-wrap items-center gap-space-xs pt-space-2xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant mr-space-2xs">Suggested:</span>
+<button class="px-space-sm py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-body-sm text-body-sm text-left" onclick="setQuery(this.innerText)">
+          What is the attendance criteria for condonation?
+        </button>
+<button class="px-space-sm py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-body-sm text-body-sm text-left" onclick="setQuery(this.innerText)">
+          Fast-track exam dates 2025
+        </button>
+<button class="px-space-sm py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-body-sm text-body-sm text-left" onclick="setQuery(this.innerText)">
+          How to calculate CGPA with new credits?
+        </button>
+</div>
+</div>
+<!-- 4 Clean Academic Metric Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Metric 1: Attendance -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm space-y-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Overall Attendance</span>
+<span class="material-symbols-outlined text-[20px] text-secondary">check_circle</span>
+</div>
+<div class="space-y-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface">86.4</span>
+<span class="font-headline-sm text-headline-sm text-on-surface-variant">%</span>
+</div>
+<!-- Clean Bar Indicator -->
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 86.4%;"></div>
+</div>
+</div>
+<div class="flex items-center gap-space-2xs text-on-secondary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-code-sm text-code-sm font-medium">Safe • Above 75% threshold</span>
+</div>
+</div>
+<!-- Metric 2: CGPA -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm space-y-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Current CGPA</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">school</span>
+</div>
+<div class="space-y-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface">8.92</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">/ 10.0</span>
+</div>
+<p class="font-code-sm text-code-sm text-on-surface-variant">Top 8% in CSE cohort</p>
+</div>
+<div class="text-on-surface-variant font-label-sm text-label-sm">
+          6th Semester • No active backlogs
+        </div>
+</div>
+<!-- Metric 3: Enrolled Courses -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm space-y-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Enrolled Courses</span>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">book</span>
+</div>
+<div class="space-y-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface">6</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Subjects</span>
+</div>
+<p class="font-code-sm text-code-sm text-on-surface-variant truncate">CS601, CS602, CS603, CS604</p>
+</div>
+<div class="text-on-surface-variant font-label-sm text-label-sm">
+          Elective I + Advanced ML Lab
+        </div>
+</div>
+<!-- Metric 4: Offline Documents -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm space-y-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Offline Documents</span>
+<span class="material-symbols-outlined text-[20px] text-primary-container">file_download_done</span>
+</div>
+<div class="space-y-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface">4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Ready</span>
+</div>
+<p class="font-code-sm text-code-sm text-on-surface-variant">Indexed on campus node</p>
+</div>
+<div class="text-on-surface-variant font-label-sm text-label-sm truncate">
+          Syllabus, Regulations, Timetable
+        </div>
+</div>
+</div>
+<!-- Two-Column Main Workspace -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Left Column: Course Attendance Breakdown (7 Cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-lg">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Course Attendance Breakdown</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Calculated per lecture credit hour as of current cycle.</p>
+</div>
+<span class="font-code-sm text-code-sm px-space-sm py-1 rounded bg-surface-container text-on-surface-variant">Min. 75% required</span>
+</div>
+<div class="space-y-space-md">
+<!-- Course 1 -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="space-y- space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">CS601</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Operating Systems</span>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant">Prof. M. S. Sundar • 44 of 50 classes attended</div>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">88%</span>
+<span class="block font-label-sm text-label-sm text-secondary font-medium">Good standing</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-space-xs">
+<div class="bg-secondary h-full rounded-full" style="width: 88%;"></div>
+</div>
+</div>
+<!-- Course 2 (Warning state) -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">CS602</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Compiler Design</span>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant">Dr. Aruna Rao • 29 of 39 classes attended</div>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-error font-semibold">74%</span>
+<span class="block font-label-sm text-label-sm text-error font-medium">Needs 2 classes</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-space-xs">
+<div class="bg-error h-full rounded-full" style="width: 74%;"></div>
+</div>
+</div>
+<!-- Course 3 -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">CS603</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Computer Networks</span>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant">Prof. Vikram Patil • 46 of 50 classes attended</div>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">92%</span>
+<span class="block font-label-sm text-label-sm text-secondary font-medium">Excellent</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-space-xs">
+<div class="bg-secondary h-full rounded-full" style="width: 92%;"></div>
+</div>
+</div>
+<!-- Course 4 -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors space-y-space-xs">
+<div class="flex items-center justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">CS604</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Machine Learning Lab</span>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant">Dr. Preeti H. • 19 of 20 lab sessions completed</div>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">95%</span>
+<span class="block font-label-sm text-label-sm text-secondary font-medium">Safe</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-space-xs">
+<div class="bg-secondary h-full rounded-full" style="width: 95%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Recent Verified Institutional Answers & Quick Tools (5 Cols) -->
+<div class="lg:col-span-5 space-y-space-lg">
+<!-- Verified Answer Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-primary-container">auto_awesome</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold text-primary-container">Verified Campus Answer</span>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Today, 09:14 AM</span>
+</div>
+<div class="space-y-space-xs">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Autonomous Attendance Regulations (Sec 4.2)</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Query: <em>"What happens if my attendance drops between 65% and 75%?"</em></p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low text-on-surface space-y-space-xs font-body-sm text-body-sm">
+<div class="flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">check</span>
+<span><strong>Condonation eligibility:</strong> Minimum 65% required under approved medical or collegiate extracurricular quota.</span>
+</div>
+<div class="flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">check</span>
+<span><strong>Authority:</strong> Application must be endorsed by the Head of Department (HOD) and submitted to the Dean (Academic) 7 days before semester-end examinations.</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-2xs">
+<a class="inline-flex items-center gap-1 font-label-sm text-label-sm text-primary-container hover:underline font-medium" href="#">
+<span>View verified document</span>
+<span class="material-symbols-outlined text-[16px]">arrow_outward</span>
+</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Cite: RVCE-AUT-2022.pdf#p34</span>
+</div>
+</div>
+<!-- Quick Institutional Tools Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm space-y-space-md">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Quick Actions</span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">bolt</span>
+</div>
+<div class="flex flex-col sm:flex-row gap-space-sm">
+<button class="flex-1 flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary-container text-on-primary hover:opacity-90 active:scale-[0.99] transition-all font-label-md text-label-md font-medium shadow-sm">
+<span class="material-symbols-outlined text-[18px]">chat</span>
+<span>Ask AI Assistant</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-[0.99] transition-all font-label-md text-label-md font-medium">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>
+<span>Upload Syllabus / Notes</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function setQuery(text) {
+    const input = document.getElementById('academicQueryInput');
+    if (input) {
+      input.value = text;
+      input.focus();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('academicQueryInput');
+    const sendBtn = document.getElementById('sendQueryBtn');
+    
+    function handleQuery() {
+      if (!input || !input.value.trim()) return;
+      // Soft transition to query state
+      const query = input.value.trim();
+      input.disabled = true;
+      sendBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span>';
+      
+      setTimeout(() => {
+        input.disabled = false;
+        sendBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">arrow_upward</span>';
+        input.value = '';
+        input.placeholder = 'Query received. Switching to AI Assistant view...';
+        setTimeout(() => {
+          input.placeholder = 'Ask anything about your syllabus, attendance, regulations, or exams...';
+        }, 2500);
+      }, 600);
+    }
+
+    if (sendBtn) {
+      sendBtn.addEventListener('click', handleQuery);
+    }
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleQuery();
+      });
+    }
+  });
+</script></main></div></body></html>
