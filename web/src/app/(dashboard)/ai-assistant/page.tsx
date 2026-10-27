@@ -7,13 +7,19 @@ import {
   generateId,
 } from "@/lib/storage";
 
-type Mode = "chat" | "data";
+type Mode = "chat" | "data" | "docs";
 
 interface SqlMeta {
   sql?: string;
   row_count?: number;
   columns?: string[];
   error?: string;
+}
+
+interface DocSource {
+  source: string;
+  section: string;
+  distance: number;
 }
 
 interface Message {
@@ -23,6 +29,7 @@ interface Message {
   mode: Mode;
   sqlMeta?: SqlMeta;
   result?: Record<string, unknown>[];
+  docSources?: DocSource[];
 }
 
 export default function AIAssistantPage() {
@@ -35,6 +42,7 @@ export default function AIAssistantPage() {
   const [modelsError, setModelsError] = useState("");
   const [mode, setMode] = useState<Mode>("chat");
   const [tableCount, setTableCount] = useState(0);
+  const [docsRole, setDocsRole] = useState("student");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -105,6 +113,45 @@ export default function AIAssistantPage() {
     const assistantMsg: Message = { role: "assistant", content: "", timestamp: new Date().toISOString(), mode };
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setIsLoading(true);
+
+    // ── DOCS MODE: RAG pipeline through FastAPI ask-docs ──
+    if (mode === "docs") {
+      try {
+        const res = await fetch("/api/ask-docs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || "qwen3-4b" }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.detail || "Backend error." };
+            return updated;
+          });
+          return;
+        }
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: data.answer || "I could not find this in the available documents.",
+            docSources: data.sources ?? [],
+          };
+          return updated;
+        });
+      } catch {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: "[ERROR]: Could not reach the backend. Is FastAPI running and port 8000 tunnelled?" };
+          return updated;
+        });
+      } finally {
+        setIsLoading(false);
+        abortRef.current = null;
+      }
+      return;
+    }
 
     // ── DATA MODE: route through FastAPI ask-sql pipeline ──
     if (mode === "data") {
@@ -268,6 +315,17 @@ export default function AIAssistantPage() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setMode("docs")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                mode === "docs"
+                  ? "bg-tertiary text-on-tertiary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">menu_book</span>
+              Ask Docs
+            </button>
           </div>
 
           {/* Model picker */}
@@ -348,6 +406,22 @@ export default function AIAssistantPage() {
                   </p>
                 </div>
 
+                {/* Doc sources chips */}
+                {msg.docSources && msg.docSources.length > 0 && (
+                  <div className="max-w-[80%] flex flex-wrap gap-1.5 mt-1">
+                    {msg.docSources.map((s, i) => (
+                      <span
+                        key={i}
+                        title={`Distance: ${s.distance}`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 border border-tertiary/20 text-xs text-on-surface-variant font-mono"
+                      >
+                        <span className="material-symbols-outlined text-[12px] text-tertiary">description</span>
+                        {s.source.replace(/\.md$/, "")} › {s.section.split(" > ").pop()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Generated SQL collapsible */}
                 {msg.sqlMeta?.sql && (
                   <div className="max-w-[80%] w-full">
@@ -364,8 +438,8 @@ export default function AIAssistantPage() {
                   </div>
                 )}
 
-                {/* Result table for multi-row results */}
-                {msg.result && msg.result.length > 1 && msg.sqlMeta?.columns && (
+                {/* Result table */}
+                {msg.result && msg.result.length >= 1 && msg.sqlMeta?.columns && (
                   <div className="max-w-[90%] w-full overflow-x-auto rounded-xl border border-surface-variant shadow-sm">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-surface-container-low">
@@ -412,6 +486,22 @@ export default function AIAssistantPage() {
               Data mode — LLM generates SQL, Python runs it on your institutional.db
             </p>
           )}
+          {mode === "docs" && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[14px] text-tertiary">menu_book</span>
+              <p className="text-xs text-on-surface-variant">Docs mode — searches institutional documents (regulations, circulars)</p>
+              <select
+                value={docsRole}
+                onChange={(e) => setDocsRole(e.target.value)}
+                className="ml-auto px-2 py-1 rounded-lg bg-surface-container border border-surface-variant text-on-surface text-xs focus:outline-none"
+              >
+                <option value="student">student</option>
+                <option value="faculty">faculty</option>
+                <option value="hod">hod</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
             <input
               type="text"
@@ -422,6 +512,8 @@ export default function AIAssistantPage() {
               placeholder={
                 mode === "data"
                   ? "Ask about your data… e.g. How many students attended?"
+                  : mode === "docs"
+                  ? "Ask about regulations, circulars, syllabus…"
                   : model ? "Ask anything…" : "Waiting for model connection..."
               }
             />
@@ -438,7 +530,7 @@ export default function AIAssistantPage() {
                 type="submit"
                 disabled={!input.trim() || (mode === "chat" && !model)}
                 className={`flex items-center justify-center w-12 h-12 rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 ${
-                  mode === "data" ? "bg-secondary text-on-secondary" : "bg-primary text-on-primary"
+                  mode === "data" ? "bg-secondary text-on-secondary" : mode === "docs" ? "bg-tertiary text-on-tertiary" : "bg-primary text-on-primary"
                 }`}
               >
                 <span className="material-symbols-outlined text-[20px]">send</span>

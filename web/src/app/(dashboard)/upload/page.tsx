@@ -28,6 +28,8 @@ export default function UploadPage() {
   const [lastUpload, setLastUpload] = useState<UploadResult | null>(null);
   const [error, setError] = useState("");
   const [backendDown, setBackendDown] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchTables = useCallback(async () => {
@@ -84,6 +86,25 @@ export default function UploadPage() {
     const file = e.target.files?.[0];
     if (file) processFile(file);
     e.target.value = "";
+  };
+
+  const deleteTable = async (tableName: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tables/${encodeURIComponent(tableName)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        setError(d.detail || "Delete failed.");
+      } else {
+        if (lastUpload?.table === tableName) setLastUpload(null);
+        await fetchTables();
+      }
+    } catch {
+      setError("Could not reach the backend.");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(null);
+    }
   };
 
   const tableList = Object.entries(tables);
@@ -234,8 +255,56 @@ export default function UploadPage() {
                   </p>
                 </div>
                 <span className="font-code-sm text-code-sm text-on-surface-variant">{meta.rows.toLocaleString()} rows</span>
+                <button
+                  id={`delete-table-${name}`}
+                  onClick={() => setConfirmDelete(name)}
+                  title="Delete table"
+                  className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-error/10 hover:text-error transition-colors flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-xl w-full max-w-sm mx-4 p-space-xl space-y-space-lg">
+            <div className="flex items-center gap-space-sm">
+              <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[20px] text-error">delete_forever</span>
+              </div>
+              <div>
+                <p className="font-headline-sm text-headline-sm text-on-surface">Delete table?</p>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="font-body-sm text-body-sm text-on-surface">
+              You are about to permanently delete{" "}
+              <code className="font-code-sm bg-surface-container px-1.5 py-0.5 rounded text-error">{confirmDelete}</code>{" "}
+              and all its data from SQLite.
+            </p>
+            <div className="flex gap-space-sm justify-end">
+              <button
+                id="cancel-delete-btn"
+                onClick={() => setConfirmDelete(null)}
+                disabled={deleting}
+                className="px-space-md py-space-sm rounded-xl font-label-md text-label-md text-on-surface bg-surface-container hover:bg-surface-container-high transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-delete-btn"
+                onClick={() => deleteTable(confirmDelete)}
+                disabled={deleting}
+                className="px-space-md py-space-sm rounded-xl font-label-md text-label-md text-on-error bg-error hover:opacity-90 transition-opacity flex items-center gap-space-xs disabled:opacity-50"
+              >
+                {deleting && <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>}
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

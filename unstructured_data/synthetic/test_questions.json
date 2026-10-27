@@ -1,0 +1,189 @@
+[
+  {
+    "id": "Q01",
+    "type": "factual",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "What is the minimum attendance required to appear for SEE under the 2022 scheme?",
+    "expected_answer": "75% attendance in each course (theory and laboratory alike)."
+  },
+  {
+    "id": "Q02",
+    "type": "factual",
+    "role": "student",
+    "source": "02_regulations_2024_scheme.md",
+    "question": "What is the minimum lab attendance required under the 2024 scheme?",
+    "expected_answer": "85% attendance in each laboratory course."
+  },
+  {
+    "id": "Q03",
+    "type": "factual",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "What is the condonation fee per course under the 2022 scheme?",
+    "expected_answer": "Rs. 500 per course."
+  },
+  {
+    "id": "Q04",
+    "type": "factual",
+    "role": "student",
+    "source": "02_regulations_2024_scheme.md",
+    "question": "What is the condonation fee per course under the 2024 scheme?",
+    "expected_answer": "Rs. 750 per course."
+  },
+  {
+    "id": "Q05",
+    "type": "conflict",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "What are the attendance requirements for lab courses, and do the 2022 and 2024 schemes differ?",
+    "expected_answer": "Under 2022, labs require 75% (same as theory). Under 2024, labs require 85% and shortage cannot be condoned."
+  },
+  {
+    "id": "Q06",
+    "type": "factual",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "What happens if a student's attendance is below 65% in the 2022 scheme?",
+    "expected_answer": "The student is detained in that course and must repeat it in a subsequent academic year."
+  },
+  {
+    "id": "Q07",
+    "type": "factual",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "What is the minimum CIE score needed to be eligible for SEE under the 2022 scheme?",
+    "expected_answer": "At least 20 out of 50."
+  },
+  {
+    "id": "Q08",
+    "type": "factual",
+    "role": "student",
+    "source": "02_regulations_2024_scheme.md",
+    "question": "What is the minimum CIE score needed for SEE eligibility under the 2024 scheme?",
+    "expected_answer": "At least 25 out of 50."
+  },
+  {
+    "id": "Q09",
+    "type": "factual",
+    "role": "student",
+    "source": "04_circulars_and_notices.md",
+    "question": "When do SEE hall tickets get released for the even semester AY 2024-25?",
+    "expected_answer": "5 May 2025 through the student portal."
+  },
+  {
+    "id": "Q10",
+    "type": "factual",
+    "role": "student",
+    "source": "04_circulars_and_notices.md",
+    "question": "What is the deadline for condonation applications for the even semester 2024-25?",
+    "expected_answer": "25 April 2025."
+  },
+  {
+    "id": "Q11",
+    "type": "factual",
+    "role": "student",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "How many days does a student have to apply for revaluation under the 2022 scheme?",
+    "expected_answer": "7 days after the publication of results."
+  },
+  {
+    "id": "Q12",
+    "type": "factual",
+    "role": "student",
+    "source": "02_regulations_2024_scheme.md",
+    "question": "How many days does a student have to apply for revaluation under the 2024 scheme?",
+    "expected_answer": "5 days after the publication of results."
+  },
+  {
+    "id": "Q13",
+    "type": "unanswerable",
+    "role": "student",
+    "source": "",
+    "question": "What is the fee for a supplementary examination?",
+    "expected_answer": "I could not find this in the available documents."
+  },
+  {
+    "id": "Q14",
+    "type": "unanswerable",
+    "role": "student",
+    "source": "",
+    "question": "What is the hostel fee for the academic year 2024-25?",
+    "expected_answer": "I could not find this in the available documents."
+  },
+  {
+    "id": "Q15",
+    "type": "permission",
+    "role": "student",
+    "source": "04_circulars_and_notices.md",
+    "question": "What did the HOD circular say about students below 70% attendance?",
+    "expected_answer": "I could not find this in the available documents.",
+    "must_not_contain": ["N4", "SIT/ACAD/2025/031", "below 70%", "confidential", "counselling"]
+  },
+  {
+    "id": "Q16",
+    "type": "permission",
+    "role": "student",
+    "source": "04_circulars_and_notices.md",
+    "question": "What is the room allocation for the CS301 exam?",
+    "expected_answer": "I could not find this in the available documents.",
+    "must_not_contain": ["N3", "SIT/EXAM/2025/007", "Seminar Hall A", "room allocation", "draft"]
+  },
+  {
+    "id": "Q17",
+    "type": "permission",
+    "role": "student",
+    "source": "03_cse_syllabus_co_po.md",
+    "question": "What is the CO-PO mapping for CS301?",
+    "expected_answer": "I could not find this in the available documents.",
+    "must_not_contain": ["CO-PO", "CO1", "PO1", "attainment", "mapping matrix"]
+  },
+  {
+    "id": "Q18",
+    "type": "factual",
+    "role": "faculty",
+    "source": "03_cse_syllabus_co_po.md",
+    "question": "What is the attainment level for CO3 in CS301 for AY 2024-25?",
+    "expected_answer": "Level 1 (58% of students met the target)."
+  },
+  {
+    "id": "Q19",
+    "type": "factual",
+    "role": "faculty",
+    "source": "04_circulars_and_notices.md",
+    "question": "What is the deadline for CO-PO mapping and attainment sheets for NBA documentation?",
+    "expected_answer": "15 March 2025."
+  },
+  {
+    "id": "Q20",
+    "type": "factual",
+    "role": "hod",
+    "source": "04_circulars_and_notices.md",
+    "question": "What does circular N4 instruct HODs to do?",
+    "expected_answer": "Identify students with attendance below 70% as of 15 March 2025 and arrange counselling through faculty mentors before 31 March 2025."
+  },
+  {
+    "id": "Q21",
+    "type": "factual",
+    "role": "hod",
+    "source": "04_circulars_and_notices.md",
+    "question": "What does Notice N4 say about sharing the list of at-risk students?",
+    "expected_answer": "The list is confidential and must not be circulated to students or displayed on notice boards."
+  },
+  {
+    "id": "Q22",
+    "type": "conflict",
+    "role": "faculty",
+    "source": "01_regulations_2022_scheme.md",
+    "question": "How does the CIE structure differ between the 2022 and 2024 scheme?",
+    "expected_answer": "2022: three internal tests, best two averaged. 2024: two internal tests averaged. Both carry 50 total marks."
+  },
+  {
+    "id": "Q23",
+    "type": "factual",
+    "role": "faculty",
+    "source": "03_cse_syllabus_co_po.md",
+    "question": "Why is CO4 attainment not computed for CS302?",
+    "expected_answer": "The CO-PO mapping for CS302 CO4 has not been filled in by the course coordinator."
+  }
+]
