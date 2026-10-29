@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "institutional.db")
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"  # Ollama native port on Ubuntu
-DEFAULT_MODEL = "qwen3:4b"
+DEFAULT_MODEL = "qwen3-4b"
 
 app = FastAPI(title="Institutional AI Backend", version="1.0.0")
 
@@ -44,7 +44,7 @@ def list_tables():
 
 
 def get_schema():
-    """Return all table schemas as readable text — injected into LLM prompt."""
+    """Return all table schemas + 2 sample rows — injected into LLM prompt."""
     conn = get_db()
     cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
     tables = [row[0] for row in cur.fetchall()]
@@ -52,8 +52,18 @@ def get_schema():
     for t in tables:
         cur2 = conn.execute(f"PRAGMA table_info({t});")
         cols = cur2.fetchall()
+        col_names = [c[1] for c in cols]
         col_defs = ", ".join(f"{c[1]} {c[2]}" for c in cols)
         parts.append(f"Table: {t}({col_defs})")
+        # Include 2 sample rows so the LLM knows real column values
+        try:
+            cur3 = conn.execute(f"SELECT * FROM \"{t}\" LIMIT 2;")
+            rows = cur3.fetchall()
+            for row in rows:
+                sample = ", ".join(f"{col_names[i]}={repr(v)}" for i, v in enumerate(row))
+                parts.append(f"  Sample row: {sample}")
+        except Exception:
+            pass
     conn.close()
     return "\n".join(parts)
 
@@ -69,9 +79,9 @@ def extract_sql(raw: str) -> str:
     # Try ```sql ... ``` block first
     match = re.search(r"```(?:sql)?\s*(SELECT.*?)```", raw, re.IGNORECASE | re.DOTALL)
     if match:
-        return match.group(1).strip()
-    # Fall back: grab from first SELECT
-    match = re.search(r"(SELECT\b.*?)(?:;|$)", raw, re.IGNORECASE | re.DOTALL)
+        return match.group(1).strip().rstrip(";")
+    # Fall back: grab everything from first SELECT to end of string
+    match = re.search(r"(SELECT\b.*)", raw, re.IGNORECASE | re.DOTALL)
     if match:
         return match.group(1).strip().rstrip(";")
     return raw.strip()
@@ -185,13 +195,16 @@ def ask_sql(req: AskRequest):
 
     prompt = (
         "/no_think You are a SQLite expert. Output ONLY a valid SELECT SQL query — no explanation, no markdown.\n\n"
-        f"Database schema:\n{schema}\n\n"
+        f"Database schema (with sample rows showing real column names and values):\n{schema}\n\n"
         "Rules:\n"
         "- Only write SELECT statements\n"
-        "- Use exact column names from the schema above\n"
-        "- No comments, no markdown fences, no explanation\n\n"
+        "- ONLY use column names that appear exactly in the schema above — never invent column names\n"
+        "- Match text values case-insensitively using LIKE or LOWER() if unsure of exact casing\n"
+        "- No comments, no markdown fences, no explanation\n"
+        "- End the query with a semicolon\n\n"
         "Example:\n"
         "Schema: Table: attendance(student_id TEXT, date TEXT, present INTEGER)\n"
+        "  Sample row: student_id='1RV25AI001', date='2024-01-15', present=1\n"
         "Question: How many students attended on 2024-01-15?\n"
         "SQL: SELECT COUNT(*) as count FROM attendance WHERE date = '2024-01-15' AND present = 1;\n\n"
         f"Question: {req.prompt}\n"
@@ -206,7 +219,7 @@ def ask_sql(req: AskRequest):
                 "prompt": prompt,
                 "stream": False,
                 "think": False,
-                "options": {"temperature": 0.1, "num_predict": 256},
+                "options": {"temperature": 0.1, "num_predict": 512, "num_ctx": 4096},
             },
             timeout=120,
         )
@@ -276,3 +289,44 @@ def delete_table(table_name: str):
     conn.commit()
     conn.close()
     return {"status": "deleted", "table": table_name}
+
+
+# ─── RAG / Unstructured docs ─────────────────────────────────────────────────
+
+class AskDocsRequest(BaseModel):
+    question: str
+    role: str  # "student" | "faculty" | "hod" | "admin"
+    model: str = DEFAULT_MODEL
+
+
+@app.post("/ask-docs")
+def ask_docs(req: AskDocsRequest):
+    """
+    RAG pipeline for unstructured institutional documents stored in ChromaDB.
+
+    Pipeline:
+      1. Validate role (server-side; see security note below).
+      2. Embed question with sentence-transformers (CPU, local).
+      3. Query ChromaDB with role filter — restricted chunks NEVER leave the DB.
+      4. Pass retrieved context + question to Ollama; return answer + sources.
+
+    SECURITY NOTE (PROTOTYPE):
+      Role is currently taken directly from the request body for ease of development.
+      In production, role MUST be derived from a verified server-side session token
+      (e.g. JWT signed by the auth service). Never trust the client or the LLM prompt
+      for access-control decisions.
+    """
+    from backend.rag import answer_question  # lazy import so main.py starts fast
+
+    try:
+        result = answer_question(
+            question=req.question,
+            role=req.role,
+            model=req.model,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    return result
