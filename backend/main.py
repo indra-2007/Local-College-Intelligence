@@ -28,6 +28,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+def warmup_ollama():
+    """
+    Send a tiny no-op request to Ollama on startup so the model weights are
+    loaded into RAM before the first real user query arrives.
+    Without this, the first query takes 10-20 s just for model loading.
+    """
+    try:
+        requests.post(
+            OLLAMA_URL,
+            json={
+                "model": DEFAULT_MODEL,
+                "prompt": "hi",
+                "stream": False,
+                "think": False,
+                "options": {"num_predict": 1, "num_ctx": 512},
+            },
+            timeout=60,
+        )
+    except Exception:
+        pass  # non-fatal — server still starts even if Ollama is not yet up
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def get_db():
@@ -44,28 +67,38 @@ def list_tables():
 
 
 def get_schema():
-    """Return all table schemas + 2 sample rows — injected into LLM prompt."""
+    """
+    Return (table_names_list, schema_text) where schema_text has one clearly
+    separated block per table so the LLM can unambiguously map questions to
+    the correct table.
+    """
     conn = get_db()
     cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
     tables = [row[0] for row in cur.fetchall()]
-    parts = []
+    blocks = []
     for t in tables:
         cur2 = conn.execute(f"PRAGMA table_info({t});")
         cols = cur2.fetchall()
         col_names = [c[1] for c in cols]
         col_defs = ", ".join(f"{c[1]} {c[2]}" for c in cols)
-        parts.append(f"Table: {t}({col_defs})")
-        # Include 2 sample rows so the LLM knows real column values
+
+        lines = []
+        lines.append(f"[{t}] Columns: {col_defs}")
+        # 1 sample row is enough for the LLM to see value types
         try:
-            cur3 = conn.execute(f"SELECT * FROM \"{t}\" LIMIT 2;")
-            rows = cur3.fetchall()
-            for row in rows:
-                sample = ", ".join(f"{col_names[i]}={repr(v)}" for i, v in enumerate(row))
-                parts.append(f"  Sample row: {sample}")
+            cur3 = conn.execute(f'SELECT * FROM "{t}" LIMIT 1;')
+            row = cur3.fetchone()
+            if row:
+                sample = ", ".join(
+                    f"{col_names[j]}={repr(v)}" for j, v in enumerate(row)
+                )
+                lines.append(f"    e.g. {sample}")
         except Exception:
             pass
+        blocks.append("\n".join(lines))
     conn.close()
-    return "\n".join(parts)
+    schema_text = "\n\n".join(blocks)
+    return tables, schema_text
 
 
 def is_safe_sql(sql: str) -> bool:
@@ -161,6 +194,22 @@ async def upload_file(file: UploadFile = File(...)):
     # Sanitise column names too
     df.columns = [re.sub(r"[^a-z0-9_]", "_", c.strip().lower()) for c in df.columns]
 
+    # ── Clean percentage strings → real numbers ───────────────────────────────
+    # If a column has values like "75%", "100%", strip "%" and store as REAL
+    # so SQL comparisons like WHERE attendance < 80 work correctly (not as strings).
+    for col in df.select_dtypes(include=['object', 'str']).columns:
+        non_null = df[col].dropna()
+        if len(non_null) == 0:
+            continue
+        str_vals = non_null.astype(str).str.strip()
+        pct_matches = str_vals[str_vals.str.match(r"^\d+(\.\d+)?%$")]
+        # Convert if more than half the non-null values are percentage strings
+        if len(pct_matches) > 0 and (len(pct_matches) / len(str_vals)) > 0.5:
+            df[col] = pd.to_numeric(
+                df[col].astype(str).str.strip().str.rstrip("%"),
+                errors="coerce",
+            )
+
     conn = get_db()
     df.to_sql(table_name, conn, if_exists="replace", index=False)
     conn.close()
@@ -183,30 +232,22 @@ class AskRequest(BaseModel):
 def ask_sql(req: AskRequest):
     """
     Full pipeline:
-    1. Build schema-aware few-shot prompt
+    1. Build schema-aware few-shot prompt with clearly separated table blocks
     2. LLM generates SQL text only
     3. Safety gate: reject anything destructive
     4. Python (not LLM) executes SELECT against SQLite
     5. Return results + generated SQL for transparency
     """
-    schema = get_schema()
-    if not schema:
+    tables, schema = get_schema()
+    if not tables:
         raise HTTPException(status_code=400, detail="No data uploaded yet. Upload a CSV first.")
 
     prompt = (
-        "/no_think You are a SQLite expert. Output ONLY a valid SELECT SQL query — no explanation, no markdown.\n\n"
-        f"Database schema (with sample rows showing real column names and values):\n{schema}\n\n"
-        "Rules:\n"
-        "- Only write SELECT statements\n"
-        "- ONLY use column names that appear exactly in the schema above — never invent column names\n"
-        "- Match text values case-insensitively using LIKE or LOWER() if unsure of exact casing\n"
-        "- No comments, no markdown fences, no explanation\n"
-        "- End the query with a semicolon\n\n"
-        "Example:\n"
-        "Schema: Table: attendance(student_id TEXT, date TEXT, present INTEGER)\n"
-        "  Sample row: student_id='1RV25AI001', date='2024-01-15', present=1\n"
-        "Question: How many students attended on 2024-01-15?\n"
-        "SQL: SELECT COUNT(*) as count FROM attendance WHERE date = '2024-01-15' AND present = 1;\n\n"
+        "/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
+        f"Tables:\n{schema}\n\n"
+        "Rules: use ONLY column names from the schema above; pick the table whose columns match the question; "
+        "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
+        "no markdown, no comments; end with semicolon.\n\n"
         f"Question: {req.prompt}\n"
         "SQL:"
     )
@@ -219,9 +260,9 @@ def ask_sql(req: AskRequest):
                 "prompt": prompt,
                 "stream": False,
                 "think": False,
-                "options": {"temperature": 0.1, "num_predict": 512, "num_ctx": 4096},
+                "options": {"temperature": 0.0, "num_predict": 120, "num_ctx": 2048},
             },
-            timeout=120,
+            timeout=60,
         )
         llm_resp.raise_for_status()
     except requests.exceptions.RequestException as e:
