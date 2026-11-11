@@ -9,49 +9,48 @@ import re
 import io
 import requests
 import pandas as pd
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 
-# ─── Config ──────────────────────────────────────────────────────────────────
+# ─── Config ───────────────────────────────────────────────────────────────────
+from backend.config import DB_PATH, DEFAULT_MODEL, OLLAMA_GENERATE_URL
+import backend.llm_service as llm_service
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "institutional.db")
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"  # Ollama native port on Ubuntu
-DEFAULT_MODEL = "qwen3-4b"
-
-app = FastAPI(title="Institutional AI Backend", version="1.0.0")
+app = FastAPI(title="Institutional AI Backend", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],  # Next.js server proxies all requests — browsers never hit this directly
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 @app.on_event("startup")
-def warmup_ollama():
+def startup():
     """
-    Send a tiny no-op request to Ollama on startup so the model weights are
-    loaded into RAM before the first real user query arrives.
-    Without this, the first query takes 10-20 s just for model loading.
+    1. Create auth/chat DB tables and seed dev accounts if not present.
+    2. Warmup Ollama so the first real query isn't slow.
     """
+    # Ensure auth + chat persistence tables exist
+    from backend.auth_storage import init_storage_db as _init_db
+    _init_db()
+
+    # Warmup: send a no-op request so model weights are in RAM
     try:
-        requests.post(
-            OLLAMA_URL,
-            json={
-                "model": DEFAULT_MODEL,
-                "prompt": "hi",
-                "stream": False,
-                "think": False,
-                "options": {"num_predict": 1, "num_ctx": 512},
-            },
-            timeout=60,
+        llm_service.generate(
+            prompt="hi",
+            model=llm_service.get_active_model(),
+            num_predict=1,
+            num_ctx=512,
         )
     except Exception:
         pass  # non-fatal — server still starts even if Ollama is not yet up
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def get_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -120,11 +119,57 @@ def extract_sql(raw: str) -> str:
     return raw.strip()
 
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
+# ─── Model Management Routes ──────────────────────────────────────────────────
+
+@app.get("/models")
+def get_models():
+    """Return all models currently installed in Ollama."""
+    try:
+        models = llm_service.get_installed_models()
+        return {
+            "models": [m["name"] for m in models],
+            "active": llm_service.get_active_model(),
+        }
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/models/active")
+def get_active_model():
+    """Return the currently active generation model."""
+    return {"active_model": llm_service.get_active_model()}
+
+
+class SetModelRequest(BaseModel):
+    model: str
+
+
+@app.post("/models/active")
+def set_active_model(req: SetModelRequest):
+    """
+    Switch the active generation model.
+    Model must already be installed in Ollama — never auto-downloads.
+    """
+    try:
+        llm_service.set_active_model(req.model)
+        return {"status": "ok", "active_model": req.model}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ─── Health & Tables ──────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "db": DB_PATH, "tables": list_tables()}
+    return {
+        "status": "ok",
+        "db": DB_PATH,
+        "tables": list_tables(),
+        "active_model": llm_service.get_active_model(),
+        "ollama_url": OLLAMA_GENERATE_URL,
+    }
 
 
 @app.get("/tables")
@@ -138,6 +183,8 @@ def get_tables():
     conn.close()
     return {"tables": result}
 
+
+# ─── Upload ───────────────────────────────────────────────────────────────────
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -223,9 +270,11 @@ async def upload_file(file: UploadFile = File(...)):
     }
 
 
+# ─── Ask SQL ──────────────────────────────────────────────────────────────────
+
 class AskRequest(BaseModel):
     prompt: str
-    model: str = DEFAULT_MODEL
+    model: str | None = None  # None = use active model
 
 
 @app.post("/ask-sql")
@@ -253,22 +302,17 @@ def ask_sql(req: AskRequest):
     )
 
     try:
-        llm_resp = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": req.model,
-                "prompt": prompt,
-                "stream": False,
-                "think": False,
-                "options": {"temperature": 0.0, "num_predict": 120, "num_ctx": 2048},
-            },
-            timeout=60,
+        result = llm_service.generate(
+            prompt=prompt,
+            model=req.model,  # None = use shared active model
+            temperature=0.0,
+            num_predict=120,
+            num_ctx=2048,
         )
-        llm_resp.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"LLM unreachable: {e}")
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
-    raw_sql = llm_resp.json().get("response", "").strip()
+    raw_sql = result.get("response", "").strip()
     generated_sql = extract_sql(raw_sql)
 
     # Safety gate — never execute destructive SQL from LLM output
@@ -307,6 +351,8 @@ def ask_sql(req: AskRequest):
     }
 
 
+# ─── Table Preview & Delete ───────────────────────────────────────────────────
+
 @app.get("/preview/{table_name}")
 def preview_table(table_name: str, limit: int = 10):
     if table_name not in list_tables():
@@ -320,10 +366,8 @@ def preview_table(table_name: str, limit: int = 10):
 @app.delete("/tables/{table_name}")
 def delete_table(table_name: str):
     """Drop a table from SQLite — permanently deletes uploaded data."""
-    # Validate table exists
     if table_name not in list_tables():
         raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found.")
-    # Sanitise name to prevent SQL injection (even though it's our own list)
     safe_name = re.sub(r"[^a-z0-9_]", "", table_name)
     conn = get_db()
     conn.execute(f'DROP TABLE IF EXISTS "{safe_name}";')
@@ -332,12 +376,12 @@ def delete_table(table_name: str):
     return {"status": "deleted", "table": table_name}
 
 
-# ─── RAG / Unstructured docs ─────────────────────────────────────────────────
+# ─── RAG / Unstructured docs ──────────────────────────────────────────────────
 
 class AskDocsRequest(BaseModel):
     question: str
     role: str  # "student" | "faculty" | "hod" | "admin"
-    model: str = DEFAULT_MODEL
+    model: str | None = None  # None = use active model
 
 
 @app.post("/ask-docs")
@@ -363,7 +407,7 @@ def ask_docs(req: AskDocsRequest):
         result = answer_question(
             question=req.question,
             role=req.role,
-            model=req.model,
+            model=req.model,  # None = use active model (resolved inside rag.py)
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -371,3 +415,117 @@ def ask_docs(req: AskDocsRequest):
         raise HTTPException(status_code=503, detail=str(e))
 
     return result
+
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+
+from backend.auth_storage import (
+    authenticate_user,
+    create_auth_session,
+    get_user_by_token,
+    delete_auth_session,
+    init_storage_db,
+)
+from fastapi import Header
+
+
+def _get_current_user(authorization: Optional[str] = Header(default=None)):
+    """Dependency: extract and validate Bearer token from Authorization header."""
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
+    user = get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired or invalid token.")
+    return user
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/auth/login")
+def login(req: LoginRequest):
+    user = authenticate_user(req.email, req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    token = create_auth_session(user["id"])
+    return {"status": "ok", "user": user, "token": token}
+
+
+@app.get("/auth/me")
+def me(authorization: Optional[str] = Header(default=None)):
+    user = _get_current_user(authorization)
+    return {"user": user}
+
+
+@app.post("/auth/logout")
+def logout(authorization: Optional[str] = Header(default=None)):
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ", 1)[1].strip()
+    if token:
+        delete_auth_session(token)
+    return {"status": "ok"}
+
+
+# ─── Chat History ─────────────────────────────────────────────────────────────
+
+from backend.auth_storage import (
+    get_user_chat_sessions,
+    get_chat_session,
+    upsert_chat_session,
+    delete_chat_session,
+)
+
+
+@app.get("/chats")
+def list_chats(authorization: Optional[str] = Header(default=None)):
+    """Return all chat sessions for the authenticated user."""
+    user = _get_current_user(authorization)
+    sessions = get_user_chat_sessions(user["id"])
+    return sessions
+
+
+class ChatSessionBody(BaseModel):
+    id: Optional[str] = None
+    title: str = "Untitled chat"
+    model: str = "qwen2.5-coder:7b"
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+    messages: list = []
+
+
+@app.post("/chats")
+def save_chat(body: ChatSessionBody, authorization: Optional[str] = Header(default=None)):
+    """Create or update a chat session and all its messages."""
+    user = _get_current_user(authorization)
+    try:
+        result = upsert_chat_session(body.model_dump(), user["id"])
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="This conversation belongs to another user.")
+    return result
+
+
+@app.get("/chats/{session_id}")
+def get_chat(session_id: str, authorization: Optional[str] = Header(default=None)):
+    """Get a single chat session by ID (must belong to authenticated user)."""
+    user = _get_current_user(authorization)
+    session = get_chat_session(session_id, user["id"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return session
+
+
+@app.delete("/chats/{session_id}")
+def delete_chat(session_id: str, authorization: Optional[str] = Header(default=None)):
+    """Delete a chat session (must belong to authenticated user)."""
+    user = _get_current_user(authorization)
+    deleted = delete_chat_session(session_id, user["id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found or access denied.")
+    return {"status": "deleted", "id": session_id}
+

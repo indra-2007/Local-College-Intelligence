@@ -7,7 +7,7 @@ Flow:
     → embed question (sentence-transformers, CPU)
     → query ChromaDB with role filter (access control INSIDE the DB, before any text leaves)
     → build prompt with retrieved context
-    → call Ollama /api/generate (local, no internet)
+    → call Ollama via llm_service (centralized — same active model as chat & ask-sql)
     → return answer + sources
 
 SECURITY NOTE: role filtering is done inside the Chroma query (where={"role_<role>": True}).
@@ -16,21 +16,13 @@ Role is currently accepted from the request body for prototyping — in producti
 come from a verified server-side session token, never from the client or the LLM prompt.
 """
 
-import os
-import requests
+from backend.config import CHROMA_DIR, CHROMA_COLLECTION, EMBED_MODEL
+import backend.llm_service as llm_service
 
-# ─── Config ───────────────────────────────────────────────────────────────────
-
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-CHROMA_DIR = os.path.join(ROOT, "data", "chroma")
-COLLECTION = "institutional_docs"
-EMBED_MODEL = "all-MiniLM-L6-v2"
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-DEFAULT_MODEL = "qwen3-4b"
 VALID_ROLES = ["student", "faculty", "hod", "admin"]
 
 # ─── Module-level lazy singletons ─────────────────────────────────────────────
-# Loaded once on first call; avoids reloading the 80 MB model on every request.
+# Loaded once on first call; avoids reloading the 80 MB embedding model on every request.
 
 _embedder = None
 _chroma_col = None
@@ -40,6 +32,8 @@ def _get_embedder():
     global _embedder
     if _embedder is None:
         from sentence_transformers import SentenceTransformer
+        # NOTE: EMBED_MODEL is intentionally separate from the generation model.
+        # Switching the generation model (via /models/active) NEVER affects embeddings.
         _embedder = SentenceTransformer(EMBED_MODEL)
     return _embedder
 
@@ -49,7 +43,7 @@ def _get_collection():
     if _chroma_col is None:
         import chromadb
         client = chromadb.PersistentClient(path=CHROMA_DIR)
-        _chroma_col = client.get_collection(COLLECTION)
+        _chroma_col = client.get_collection(CHROMA_COLLECTION)
     return _chroma_col
 
 
@@ -58,11 +52,17 @@ def _get_collection():
 def answer_question(
     question: str,
     role: str,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     k: int = 4,
 ) -> dict:
     """
     Retrieve relevant chunks from ChromaDB (role-filtered) and generate an answer via Ollama.
+
+    Args:
+        question: The user's question.
+        role:     One of "student", "faculty", "hod", "admin".
+        model:    Generation model name. None = use the shared active model from llm_service.
+        k:        Number of chunks to retrieve.
 
     Returns:
         {
@@ -142,33 +142,20 @@ def answer_question(
         "Answer:"
     )
 
-    # ── 7. Call Ollama ────────────────────────────────────────────────────────
+    # ── 7. Call Ollama via centralized llm_service ────────────────────────────
+    # model=None → uses the shared active model (same as chat & ask-sql)
     try:
-        resp = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "think": False,
-                "options": {
-                    "temperature": 0.1,
-                    "num_predict": 300,
-                    "num_ctx": 4096,
-                },
-            },
-            timeout=120,
+        result = llm_service.generate(
+            prompt=prompt,
+            model=model,  # None = active model
+            temperature=0.1,
+            num_predict=200,
+            num_ctx=2048,
         )
-        resp.raise_for_status()
-    except requests.exceptions.ConnectionError:
-        raise RuntimeError(
-            f"Cannot reach Ollama at {OLLAMA_URL}. "
-            "Is the SSH tunnel open? (ssh -N -L 11434:localhost:11434 indra@<server>)"
-        )
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Ollama request failed: {e}")
+    except RuntimeError:
+        raise  # propagate to caller
 
-    answer = resp.json().get("response", "").strip()
+    answer = result.get("response", "").strip()
     if not answer:
         answer = "I could not find this in the available documents."
 

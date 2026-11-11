@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: model || "qwen3:4b",
+      model: model || "qwen2.5-coder:7b",
       prompt: prompt,
       stream: true,
       think: false,
