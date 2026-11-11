@@ -1,364 +1,338 @@
-# 📚 Institutional AI Dashboard — Complete Project Guide
+# 🎓 C-GPT — Local College Intelligence
 
-> Written for beginners. No prior knowledge assumed.
-
----
-
-## 🧠 What Is This Project?
-
-This is an **AI-powered dashboard for a college/institution** that lets you:
-
-- Upload student data (CSV/Excel files like attendance, marks)
-- Store that data in a real database on a remote server
-- Ask questions about the data in plain English — *"How many students have attendance below 75%?"*
-- Get answers powered by a local AI (Ollama LLM) — **no internet, no API key, no cost**
-- Chat with the AI for general questions too
+> An offline, privacy-first AI dashboard for institutional use.  
+> No internet. No API keys. No data leaves your network.
 
 ---
 
-## 🖥️ Two Computers Are Involved
+## 🧠 What Is This?
 
-| Computer | What It Is | What Runs On It |
+**C-GPT** is an AI-powered institutional dashboard that lets you:
+
+- Upload student data (CSV/Excel — attendance, marks, etc.)
+- Ask questions in plain English → get SQL-powered answers from your data
+- Chat with a local LLM (Ollama) for general academic queries
+- Search institutional documents (regulations, circulars) using RAG
+- Role-based access: Student, Faculty, HOD, Admin
+
+---
+
+## 🖥️ Deployment Architecture
+
+| Machine | Role | What Runs |
 |---|---|---|
-| **Windows Laptop** | Your personal laptop (dev machine) | Next.js frontend (the website UI) |
-| **Ubuntu Laptop** | A second laptop connected via WiFi | FastAPI backend + Ollama AI + SQLite database |
+| **Frontend Laptop** | Dev / Client | Next.js 16 frontend (browser UI) |
+| **Backend Server** | High-GPU server | FastAPI + Ollama LLM + SQLite + ChromaDB |
 
-The two computers talk to each other over **SSH tunnel** — a secure connection through the local network.
+The two machines communicate over an **SSH tunnel** on the local network.
 
 ---
 
-## 🏗️ Tech Stack (What Technologies Are Used)
+## 🏗️ Tech Stack
 
-| Layer | Technology | What It Does |
+| Layer | Technology | Purpose |
 |---|---|---|
-| Frontend (UI) | **Next.js 16** (TypeScript/React) | The website you see in the browser |
-| Styling | **Tailwind CSS** + Custom CSS variables | Makes the UI look good |
-| Backend API | **FastAPI** (Python) | Handles uploads, queries, database |
-| Database | **SQLite** | Stores uploaded CSV data as tables |
-| AI / LLM | **Ollama** (qwen3:4b model) | Runs AI locally, generates SQL queries |
-| Communication | **SSH Tunnel** | Securely connects Windows ↔ Ubuntu |
-| Data Processing | **Pandas** | Reads CSV/Excel files into the database |
+| Frontend | **Next.js 16** (TypeScript/React) | Browser UI |
+| Styling | **Tailwind CSS v4** | Design system |
+| Backend API | **FastAPI** (Python) | REST API, file handling, SQL |
+| Database | **SQLite** | Structured CSV/Excel data |
+| Vector DB | **ChromaDB** | RAG document embeddings |
+| Embeddings | **sentence-transformers** (MiniLM) | 384-dim question vectors |
+| LLM | **Ollama** (`qwen2.5-coder:7b`) | Local AI — SQL + RAG generation |
+| Auth | **PBKDF2** password hashing (SQLite) | User accounts + sessions |
+| Tunnel | **SSH port forwarding** | Frontend ↔ Backend secure link |
 
 ---
 
-## 📐 Architecture — How Everything Connects
+## 📐 Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   YOUR BROWSER                          │
-│              http://localhost:3000                       │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP requests
-┌────────────────────▼────────────────────────────────────┐
-│              NEXT.JS FRONTEND (Windows)                 │
-│  - Dashboard UI                                         │
-│  - Upload page                                          │
-│  - AI Assistant chat                                    │
-│  - Forwards API calls through SSH tunnel                │
-└────────┬──────────────────────────┬─────────────────────┘
-         │ localhost:8000            │ localhost:11435
-         │ (SSH tunnel)             │ (SSH tunnel)
-         ▼                          ▼
-┌────────────────────┐   ┌──────────────────────────────┐
-│  FASTAPI BACKEND   │   │      OLLAMA (AI Model)        │
-│  (Ubuntu:8000)     │   │      (Ubuntu:11434)           │
-│                    │   │                              │
-│  - Receives files  │   │  - Model: qwen3:4b           │
-│  - Reads CSV/Excel │   │  - Runs 100% locally         │
-│  - Saves to SQLite │   │  - No internet needed        │
-│  - Runs SQL        │   │  - No API key needed         │
-│  - Calls Ollama    │──▶│  - Generates SQL from        │
-│    directly        │   │    plain English questions   │
-└────────┬───────────┘   └──────────────────────────────┘
-         │
-         ▼
-┌────────────────────┐
-│  SQLite DATABASE   │
-│  (Ubuntu)          │
-│  ~/project/data/   │
-│  institutional.db  │
-│                    │
-│  Tables:           │
-│  - attendance      │
-│  - cie_marks       │
-│  - (any CSV you    │
-│     upload)        │
-└────────────────────┘
+BROWSER (localhost:3000)
+        │
+        ▼
+NEXT.JS FRONTEND (Frontend Laptop)
+   ├── /api/chat        ──SSH tunnel──▶  <SERVER_IP>:11434  (Ollama — Windows)
+   ├── /api/ask-sql     ──SSH tunnel──▶  <SERVER_IP>:8000   (FastAPI — WSL/Linux)
+   ├── /api/ask-docs    ──SSH tunnel──▶  <SERVER_IP>:8000
+   ├── /api/upload      ──SSH tunnel──▶  <SERVER_IP>:8000
+   └── /api/tables      ──SSH tunnel──▶  <SERVER_IP>:8000
+                                              │
+                                    ┌─────────┴──────────┐
+                                    │    FASTAPI :8000    │
+                                    │  - Upload CSV       │
+                                    │  - Run SQL          │
+                                    │  - RAG pipeline     │
+                                    │  - Auth / sessions  │
+                                    └──────┬──────────────┘
+                                           │
+                            ┌──────────────┼──────────────┐
+                            ▼              ▼              ▼
+                        SQLite         ChromaDB         Ollama
+                   institutional.db   (RAG index)   qwen2.5-coder:7b
 ```
 
 ---
 
-## ✅ What Has Been Built (Feature List)
+## ✅ Feature List
 
-### 1. 🎨 Frontend Dashboard (Next.js)
-A full multi-page web application with:
+### 🤖 AI Assistant (3 modes)
+| Mode | How It Works |
+|---|---|
+| **Chat** | Streams directly from Ollama (like local ChatGPT) |
+| **Ask Data** | Question → LLM generates SQL → Python runs it on SQLite → Answer |
+| **Ask Docs** | Question → embedded → ChromaDB similarity search → LLM answers from chunks |
 
-- **Sidebar navigation** with icons and labels
-- **Header** showing user info (Student · CSE Dept) and AI status badge
-- **Dark-mode compatible** design with Material You color tokens
-- **Responsive** — works on different screen sizes
-- **Login page** at `/login`
+### 📁 Upload & Documents
+- Drag & drop CSV / XLSX / XLS / JSON
+- Auto-detects and skips banner/title rows
+- Percentage strings auto-converted to numbers (`"85%"` → `85.0`)
+- Preview + table management (view, delete)
 
-### 2. 📊 Main Dashboard (`/`)
-- Overview cards (placeholder for stats)
-- Quick action buttons linking to other pages
-- Welcome section
+### 🔐 Auth & Roles
+- Login with role: `student`, `faculty`, `hod`, `admin`
+- Role-based RAG access control (embedded in ChromaDB metadata)
+- PBKDF2 hashed passwords, stored in `data/app_storage.db`
 
-### 3. 🤖 AI Assistant (`/ai-assistant`)
-Two modes in one chat interface:
+### 💬 Chat History
+- All sessions auto-saved to browser localStorage
+- Browse, expand, delete past conversations
 
-#### Chat Mode (🔵 Blue)
-- Streams directly from Ollama (like ChatGPT but local)
-- General questions: "Explain the attendance policy"
-- Shows which AI model is connected (e.g. `qwen3:4b`)
-- Live token streaming — text appears word by word
-- Stop button to cancel mid-response
-- All conversations auto-saved to Chat History
-
-#### Ask Data Mode (🟣 Purple)
-- Ask questions about **your uploaded CSV data** in plain English
-- Works through this pipeline:
-  ```
-  Your question → FastAPI → Ollama generates SQL → Python runs SQL on SQLite → Answer shown
-  ```
-- Shows the **Generated SQL** (collapsible, so you can see what query ran)
-- Shows **result table** for multi-row results
-- **The LLM never sees your raw data** — it only sees the table structure (column names)
-- Safety gate: blocks any destructive SQL (DROP, DELETE, UPDATE, etc.)
-- Badge showing how many tables are available
-
-### 4. 📁 Upload & Documents (`/upload`)
-- **Drag & drop** or click to browse files
-- Supports: CSV, XLSX, XLS, JSON
-- **Auto-detects title rows** — if your Excel has a banner row ("Student Master & Course Details"), it skips it automatically and reads the real headers
-- On upload:
-  - File is sent to FastAPI on Ubuntu
-  - Pandas reads it into a DataFrame
-  - Column names are sanitized (spaces → underscores, special chars removed)
-  - Data saved to SQLite as a table
-  - Returns preview (first 3 rows + all column names)
-- Shows all **existing tables** in SQLite with row counts
-- **Delete button** to remove any table from the database
-
-### 5. 💬 Chat History (`/chat-history`)
-- All AI conversations are saved automatically to browser localStorage
-- Browse past sessions with timestamps and model used
-- Expand any session to read the full conversation
-- Delete individual sessions
-
-### 6. 📜 Academic Regulations (`/regulations`)
-- Static page for displaying college/university rules
-- Placeholder — can be filled with actual content
-
-### 7. 👨‍💼 HOD Dashboard (`/hod`)
-- Placeholder page for Head of Department analytics view
+### 📜 Ask Docs (RAG)
+- Semantic search across institutional documents (regulations, circulars, syllabus)
+- Returns answer + source citations `[filename > section]`
+- Fully offline — embeddings computed on CPU
 
 ---
 
-## 🗂️ Project Folder Structure
+## 🗂️ Project Structure
 
 ```
-3RD/
-├── web/                          ← Next.js frontend (runs on Windows)
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── (auth)/
-│   │   │   │   └── login/        ← Login page
-│   │   │   ├── (dashboard)/
-│   │   │   │   ├── page.tsx      ← Main dashboard
-│   │   │   │   ├── ai-assistant/ ← AI chat (Chat + Ask Data modes)
-│   │   │   │   ├── upload/       ← File upload + table list
-│   │   │   │   ├── chat-history/ ← Saved conversations
-│   │   │   │   ├── regulations/  ← Academic regulations
-│   │   │   │   └── hod/          ← HOD dashboard
-│   │   │   └── api/
-│   │   │       ├── chat/         ← Forwards chat to Ollama (streaming)
-│   │   │       ├── ask-sql/      ← Forwards data queries to FastAPI
-│   │   │       ├── upload/       ← Forwards file uploads to FastAPI
-│   │   │       ├── tables/       ← Gets list of tables from FastAPI
-│   │   │       └── models/       ← Gets available Ollama models
-│   │   ├── components/
-│   │   │   ├── Sidebar.tsx       ← Left navigation menu
-│   │   │   └── Header.tsx        ← Top bar with user info
-│   │   └── lib/
-│   │       └── storage.ts        ← Chat history (localStorage)
-│   └── package.json
+project-root/
+├── backend/
+│   ├── main.py           ← FastAPI app — all routes
+│   ├── config.py         ← Reads .env (Ollama URL, model, DB paths)
+│   ├── llm_service.py    ← Centralized LLM calls (thread-safe model switching)
+│   ├── auth_storage.py   ← User auth + chat persistence (SQLite)
+│   └── rag.py            ← RAG pipeline (embed → ChromaDB → Ollama)
 │
-└── backend/
-    └── main.py                   ← FastAPI server (runs on Ubuntu)
+├── web/
+│   └── src/app/
+│       ├── (auth)/login/         ← Login page
+│       ├── (dashboard)/
+│       │   ├── ai-assistant/     ← Chat + Ask Data + Ask Docs
+│       │   ├── upload/           ← File upload + table manager
+│       │   ├── chat-history/     ← Saved sessions
+│       │   └── regulations/      ← Academic regulations page
+│       └── api/
+│           ├── chat/             ← Streams from Ollama
+│           ├── ask-sql/          ← Proxies to FastAPI /ask-sql
+│           ├── ask-docs/         ← Proxies to FastAPI /ask-docs
+│           ├── upload/           ← Proxies to FastAPI /upload
+│           ├── tables/           ← Proxies to FastAPI /tables
+│           └── models/           ← Lists Ollama installed models
+│
+├── unstructured_data/
+│   └── synthetic/        ← Markdown regulation docs for RAG indexing
+│
+├── data/                 ← Auto-created at runtime (gitignored)
+│   ├── institutional.db  ← SQLite (uploaded CSV data)
+│   ├── app_storage.db    ← SQLite (user accounts, chat logs)
+│   └── chroma/           ← ChromaDB vector index
+│
+├── .env                  ← Local config (gitignored — see .env.example)
+└── requirements.txt      ← Python dependencies
 ```
 
 ---
 
-## 🔌 API Endpoints (FastAPI on Ubuntu)
+## ⚙️ Configuration (`.env`)
 
-| Method | URL | What It Does |
-|---|---|---|
-| `GET` | `/health` | Check if server is running, list tables |
-| `GET` | `/tables` | List all tables with row counts |
-| `POST` | `/upload` | Upload a CSV/Excel, save to SQLite |
-| `POST` | `/ask-sql` | Ask a question → LLM generates SQL → run it |
-| `GET` | `/preview/{table}` | See first N rows of any table |
-| `DELETE` | `/tables/{table}` | Delete a table from SQLite |
+Copy `.env.example` to `.env` and edit:
+
+```env
+# Ollama endpoint — where the LLM is running
+# Same machine (Windows native):
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+
+# Ollama running on Windows host, FastAPI in WSL:
+# OLLAMA_BASE_URL=http://<WSL_GATEWAY_IP>:11434
+
+# Default generation model (must be pulled in Ollama first)
+DEFAULT_MODEL=qwen2.5-coder:7b
+
+# Optional overrides (defaults shown)
+# DB_PATH=data/institutional.db
+# CHROMA_DIR=data/chroma
+# EMBED_MODEL=all-MiniLM-L6-v2
+```
 
 ---
 
-## 🔐 Security Features
+## 🚀 Daily Startup (SSH Tunnel Setup)
 
-- **LLM never executes code** — it only generates SQL text
-- **Safety gate** in Python blocks: `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `TRUNCATE`, `CREATE`, `ATTACH`
-- Only `SELECT` queries are allowed to run
-- Ollama runs **100% offline** — your data never leaves your network
-- SSH tunnel encrypts all communication between the two laptops
+### On the **Backend Server**
 
----
-
-## 🚀 How To Start Everything (Daily Checklist)
-
-### Step 1 — On Ubuntu laptop (SSH in or open terminal directly)
+**1. Start Ollama** (if not already running as a service):
 ```bash
-# Start Ollama (if not already running)
 ollama serve
-
-# Start FastAPI backend
-cd ~/project
-source venv/bin/activate
-uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Step 2 — On Windows laptop (PowerShell)
-```powershell
-# Open SSH tunnel (keep this window open, don't close it)
-ssh -L 11435:localhost:11434 -L 8000:localhost:8000 indra@10.193.103.20 -N
+**2. Start FastAPI** (in WSL or Linux terminal):
+```bash
+cd /path/to/project
+source venv/bin/activate
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
 
-# In a SEPARATE PowerShell window — start the frontend
-cd C:\Users\prann\Downloads\3RD\web
+---
+
+### On the **Frontend Laptop** (Windows PowerShell)
+
+**3. Open SSH tunnel** — keep this window open the entire session:
+```powershell
+# Replace <SERVER_IP> with the server's Wi-Fi IP (run ipconfig on server to find it)
+# Replace <WSL_IP> with WSL's internal IP (run: wsl hostname -I  on server)
+# Replace <SSH_USER> with the local Windows account on the server
+
+ssh -L 8000:<WSL_IP>:8000 -L 11435:127.0.0.1:11434 -N <SSH_USER>@<SERVER_IP>
+```
+
+> **Why two targets?**  
+> - Port `8000` → WSL IP directly (FastAPI runs inside WSL/Linux)  
+> - Port `11435` → server localhost (Ollama runs natively on Windows)
+
+**4. Run the frontend** in a new PowerShell tab:
+```powershell
+cd /path/to/project/web
 npm run dev
 ```
 
-### Step 3 — Open browser
+**5. Open browser:**
 ```
 http://localhost:3000
 ```
 
 ---
 
-## 📦 One-Time Setup (Already Done — For Reference)
+## 📦 One-Time Setup
 
-### Ubuntu Setup
+### Backend (Linux / WSL)
 ```bash
-# Create project folders
-mkdir -p ~/project/backend ~/project/data
-
-# Create Python virtual environment
-cd ~/project
+cd /path/to/project
 python3 -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 
-# Install Python packages
-pip install fastapi uvicorn python-multipart pandas openpyxl requests
+# Pull the LLM model
+ollama pull qwen2.5-coder:7b
 
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Download the AI model
-ollama pull qwen3:4b
+# Index documents for RAG (run once, re-run if docs change)
+python backend/ingest.py
 ```
 
-### Windows Setup
+### Frontend (Windows)
 ```powershell
-# Install Node.js from https://nodejs.org (if not installed)
-
-# Install frontend dependencies (run once in project folder)
-cd C:\Users\prann\Downloads\3RD\web
+cd /path/to/project/web
 npm install
 ```
 
 ---
 
+## 🔌 API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Server health check |
+| `GET` | `/tables` | List all SQLite tables with row counts |
+| `POST` | `/upload` | Upload CSV/Excel → save to SQLite |
+| `POST` | `/ask-sql` | Natural language → SQL → result |
+| `POST` | `/ask-docs` | RAG: question → document answer + sources |
+| `GET` | `/tables/{name}` | Preview rows of a table |
+| `DELETE` | `/tables/{name}` | Delete a table |
+| `GET` | `/models` | List Ollama installed models |
+| `GET` | `/models/active` | Get current active model |
+| `POST` | `/models/active` | Switch active model at runtime |
+| `POST` | `/auth/login` | Login → JWT session |
+| `GET` | `/chats` | Get chat history for user |
+| `POST` | `/chats` | Save a chat session |
+
+---
+
+## 🔐 Default Credentials (Development Only)
+
+| Role | Email | Password |
+|---|---|---|
+| Student | `student@rvce.edu.in` | `Student@123` |
+| Faculty | `faculty@rvce.edu.in` | `Faculty@123` |
+| HOD | `hod@rvce.edu.in` | `Hod@123` |
+| Admin | `admin@rvce.edu.in` | `Admin@123` |
+
+> Change these before any real deployment.
+
+---
+
 ## 🔧 Troubleshooting
 
-| Problem | What It Means | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| "SSH tunnel not reachable on 11435" | SSH tunnel not running | Run the ssh command in PowerShell |
-| "Backend offline" on upload page | FastAPI not running | Start uvicorn on Ubuntu |
-| "LLM unreachable: port 11435" | Wrong Ollama port in FastAPI | FastAPI must use port 11434 (not 11435) |
-| "LLM unreachable: Read timed out" | Model loading into memory | Wait 60s and try again (first request is slow) |
-| `count: 0` with unnamed columns | CSV had title row / no proper headers | Delete title rows in Excel, upload again |
-| Upload shows "No tables" | Upload worked but backend not connected | Check SSH tunnel and FastAPI are both running |
-| Chat works but Ask Data doesn't | FastAPI is down | Ask Data needs FastAPI; Chat needs only SSH tunnel |
+| `fetch failed` on Ask Data / Upload | FastAPI not reachable via tunnel | Check SSH tunnel is open and FastAPI is running on server |
+| `Empty reply from server` on port 8000 | Tunnel points to Windows, FastAPI is in WSL | Use `<WSL_IP>:8000` in SSH `-L` flag instead of `localhost:8000` |
+| Chat works, Ask Data doesn't | FastAPI down; chat goes direct to Ollama | Start uvicorn on server |
+| RAG slow on first query | sentence-transformers downloading model | Wait — downloads once, cached permanently after |
+| `ModuleNotFoundError: No module named 'uvicorn'` | Running outside venv | Activate venv first: `source venv/bin/activate` |
+| Attendance query returns wrong rows | Attendance stored as text `"85%"` not number | Re-upload CSV — percentage cleaning is now automatic |
+| `Permission denied` on SSH | Wrong username or Microsoft account | Use a local Windows account, not a Microsoft-linked one |
 
 ---
 
-## 📊 How To Upload Data Correctly
+## 🛡️ Security Notes
 
-Your CSV/Excel file must have **column headers in Row 1**:
+- LLM **never executes code** — only generates SQL text
+- SQL safety blocklist: `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `TRUNCATE`, `CREATE`, `ATTACH`
+- Only `SELECT` queries run against the database
+- RAG role filter runs **inside ChromaDB** — restricted chunks never reach the LLM
+- All traffic between machines is encrypted via SSH tunnel
+- `.env` and `data/` are gitignored — no credentials or student data in version control
 
-✅ **Correct format:**
+---
+
+## 📊 Data Upload Format
+
+Your CSV/Excel must have **column headers in Row 1**:
+
+✅ Correct:
 ```
-USN, Student Name, Section, Gender, Admission, Status, Course Code, Course Name, Credits, Department, Faculty Name, Attendance
-1RV25CI00, Aarav Sharma, A, Male, KCET, Active, MA231TF, Probability, 4, MA, Dr. Rajesh, 100
+USN, Student_Name, Section, Attendance
+1RV25CI001, Aarav Sharma, A, 85
 ```
 
-❌ **Wrong format (causes unnamed columns):**
+❌ Wrong (causes unnamed columns):
 ```
-Student Master & Course Attendance Details     ← DELETE THIS ROW
-                                               ← DELETE THIS BLANK ROW
-USN, Student Name, ...                         ← This should be Row 1
+Student Master & Course Details     ← DELETE THIS
+                                    ← DELETE BLANK ROW
+USN, Student_Name, ...              ← This should be Row 1
 ```
 
 ---
 
-## 🔄 The "Ask Data" Pipeline — Step by Step
-
-When you type: *"How many students have attendance below 75?"*
+## 🔄 RAG Pipeline Explained
 
 ```
-1. Browser sends question to Next.js (/api/ask-sql)
-2. Next.js forwards it to FastAPI on Ubuntu (:8000/ask-sql)
-3. FastAPI reads the database schema:
-   → "Table: attendance(usn TEXT, student_name TEXT, attendance REAL...)"
-4. FastAPI sends this schema + your question to Ollama (local AI)
-5. Ollama generates SQL:
-   → "SELECT COUNT(*) as count FROM attendance WHERE attendance < 75"
-6. Python safety check: Is this a SELECT? No DROP/DELETE? ✅ Safe
-7. Python runs the SQL against SQLite (institutional.db on Ubuntu)
-8. Result: {"count": 23}
-9. Answer shown in browser: "count: 23"
-10. Generated SQL shown in collapsible section below the answer
+Your question
+     │
+     ▼ sentence-transformers (CPU, ~2s)
+384-dim vector
+     │
+     ▼ ChromaDB similarity search (role-filtered)
+Top-4 matching document chunks
+     │
+     ▼ Prompt: "Answer ONLY from the context below..."
+     │
+     ▼ Ollama (qwen2.5-coder:7b, GPU)
+Answer text + [source > section] citations
 ```
 
-**The AI never sees your actual student data — only the table structure (column names and types).**
-
 ---
 
-## 📁 Where Is The Data Stored?
-
-| Data | Location |
-|---|---|
-| Uploaded CSV data (SQLite) | Ubuntu: `~/project/data/institutional.db` |
-| Chat history | Windows: Browser localStorage (cleared if you clear browser data) |
-| AI model files | Ubuntu: `~/.ollama/models/` |
-| Frontend code | Windows: `C:\Users\prann\Downloads\3RD\web\` |
-| Backend code | Windows + Ubuntu: `backend/main.py` |
-
----
-
-## 🧩 Key Concepts Explained Simply
-
-**SQLite** — A database that lives in a single file. Like Excel but for software. Every CSV you upload becomes a "table" inside this file.
-
-**FastAPI** — A Python web server. It listens for requests (like "give me the tables" or "run this query") and responds with data.
-
-**Ollama** — Software that runs AI models on your own computer. The model (`qwen3:4b`) is like a small ChatGPT that lives on Ubuntu.
-
-**SSH Tunnel** — A secure pipe between two computers. Port 8000 on Windows is secretly the same as port 8000 on Ubuntu. Port 11435 on Windows is secretly port 11434 on Ubuntu.
-
-**Next.js** — A framework built on React (JavaScript). It runs the website and also has "API routes" that act as a middleman between the browser and the backend.
-
-**Pandas** — A Python library for working with spreadsheet data. It reads your CSV/Excel and converts it to a format SQLite understands.
-
----
-
-*Built as part of Week 7/14 of the Institutional AI Dashboard project.*
-*Stack: Next.js 16 · FastAPI · SQLite · Ollama (qwen3:4b) · SSH Tunnel*
+*Built for RVCE — Institutional AI Dashboard Project*  
+*Stack: Next.js 16 · FastAPI · SQLite · ChromaDB · Ollama · SSH Tunnel*
