@@ -32,11 +32,20 @@ app.add_middleware(
 def startup():
     """
     1. Create auth/chat DB tables and seed dev accounts if not present.
-    2. Warmup Ollama so the first real query isn't slow.
+    2. Auto-load structured data from structured_data/ into SQLite if tables are missing.
+    3. Warmup Ollama so the first real query isn't slow.
     """
     # Ensure auth + chat persistence tables exist
     from backend.auth_storage import init_storage_db as _init_db
     _init_db()
+
+    # Auto-load structured datasets into SQLite if database has no tables yet
+    try:
+        from backend.load_structured import load_all_structured
+        if not list_tables():
+            load_all_structured(overwrite=False)
+    except Exception as e:
+        print(f"[startup] Note on structured data sync: {e}")
 
     # Warmup: send a no-op request so model weights are in RAM
     try:
@@ -175,6 +184,13 @@ def health():
 @app.get("/tables")
 def get_tables():
     tables = list_tables()
+    if not tables:
+        try:
+            from backend.load_structured import load_all_structured
+            load_all_structured(overwrite=False)
+            tables = list_tables()
+        except Exception:
+            pass
     conn = get_db()
     result = {}
     for t in tables:
