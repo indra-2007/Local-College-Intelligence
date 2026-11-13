@@ -18,6 +18,7 @@ come from a verified server-side session token, never from the client or the LLM
 
 from backend.config import CHROMA_DIR, CHROMA_COLLECTION, EMBED_MODEL
 import backend.llm_service as llm_service
+import time
 
 VALID_ROLES = ["student", "faculty", "hod", "admin"]
 
@@ -145,6 +146,7 @@ def answer_question(
     # ── 7. Call Ollama via centralized llm_service ────────────────────────────
     # model=None → uses the shared active model (same as chat & ask-sql)
     try:
+        t0 = time.time()
         result = llm_service.generate(
             prompt=prompt,
             model=model,  # None = active model
@@ -152,6 +154,7 @@ def answer_question(
             num_predict=200,
             num_ctx=2048,
         )
+        time_taken_ms = round((time.time() - t0) * 1000)
     except RuntimeError:
         raise  # propagate to caller
 
@@ -163,4 +166,5 @@ def answer_question(
         "answer": answer,
         "sources": sources,
         "role": role,
+        "time_taken_ms": time_taken_ms,
     }
