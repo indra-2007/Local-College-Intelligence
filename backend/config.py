@@ -20,9 +20,33 @@ from dotenv import load_dotenv
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 load_dotenv(os.path.join(_root, ".env"))
 
+def _resolve_ollama_base_url() -> str:
+    # 1. Explicit env var always wins
+    env_url = os.getenv("OLLAMA_BASE_URL")
+    if env_url:
+        return env_url.rstrip("/")
+
+    # 2. If running inside WSL, Windows host is the default gateway / nameserver
+    try:
+        if os.path.exists("/proc/version"):
+            with open("/proc/version", "r") as f:
+                if "microsoft" in f.read().lower():
+                    # Read nameserver from /etc/resolv.conf
+                    if os.path.exists("/etc/resolv.conf"):
+                        with open("/etc/resolv.conf", "r") as rf:
+                            for line in rf:
+                                if line.strip().startswith("nameserver"):
+                                    host_ip = line.split()[1].strip()
+                                    return f"http://{host_ip}:11434"
+    except Exception:
+        pass
+
+    # 3. Default to localhost (native Windows, native Linux, or mirrored networking)
+    return "http://127.0.0.1:11434"
+
+
 # ── Ollama ────────────────────────────────────────────────────────────────────
-# Change OLLAMA_BASE_URL in .env if your setup differs.
-OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_BASE_URL: str = _resolve_ollama_base_url()
 OLLAMA_GENERATE_URL: str = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_TAGS_URL: str = f"{OLLAMA_BASE_URL}/api/tags"
 
