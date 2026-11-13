@@ -29,7 +29,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const ACCEPTED_EXT = [".csv", ".xlsx", ".xls", ".json", ".md", ".txt"];
+const ACCEPTED_EXT = [".csv", ".xlsx", ".xls", ".json", ".sql", ".md", ".txt"];
 
 export default function UploadPage() {
   const [tables, setTables] = useState<Record<string, DbTable>>({});
@@ -195,7 +195,7 @@ export default function UploadPage() {
           dragging ? "border-primary bg-primary-container/10 scale-[1.01]" : "border-surface-variant hover:border-primary/50 hover:bg-surface-container-low"
         } ${uploading ? "pointer-events-none opacity-70" : ""}`}
       >
-        <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls,.json,.md,.txt" className="hidden" onChange={onInputChange} />
+        <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls,.json,.sql,.md,.txt" className="hidden" onChange={onInputChange} />
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${dragging ? "bg-primary-container" : "bg-surface-container"}`}>
           <span className={`material-symbols-outlined text-[36px] transition-all ${dragging ? "text-on-primary" : uploading ? "animate-spin text-primary" : "text-on-surface-variant"}`}>
             {uploading ? "refresh" : dragging ? "download" : "upload_file"}
@@ -206,7 +206,7 @@ export default function UploadPage() {
             {uploading ? "Uploading and indexing on server…" : dragging ? "Drop file to upload" : "Drag & Drop files here"}
           </h2>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            <strong>Structured:</strong> CSV, XLSX, JSON (saved to <code>structured_data/</code> &amp; SQLite)<br />
+            <strong>Structured:</strong> CSV, XLSX, SQL, JSON (saved to <code>structured_data/</code> &amp; SQLite)<br />
             <strong>RAG Docs:</strong> MD, TXT (saved to <code>unstructured_data/</code> &amp; indexed in ChromaDB)
           </p>
         </div>

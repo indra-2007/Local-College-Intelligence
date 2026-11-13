@@ -250,7 +250,7 @@ async def upload_file(file: UploadFile = File(...)):
             ),
         }
 
-    # ── 2. Structured data for SQL (.csv, .xlsx, .xls, .json) ──
+    # ── 2. Structured data for SQL (.csv, .xlsx, .xls, .json, .sql) ──
     table_name = re.sub(r"[^a-z0-9_]", "_", name.lower()).strip("_")
     if not table_name:
         raise HTTPException(status_code=400, detail="Invalid filename")
@@ -260,6 +260,23 @@ async def upload_file(file: UploadFile = File(...)):
     target_path = os.path.join(STRUCTURED_DIR, clean_filename)
     with open(target_path, "wb") as f:
         f.write(raw_bytes)
+
+    if ext == ".sql":
+        try:
+            sql_text = raw_bytes.decode("utf-8", errors="ignore")
+            conn = get_db()
+            conn.executescript(sql_text)
+            conn.commit()
+            conn.close()
+            return {
+                "status": "ok",
+                "type": "structured",
+                "table": table_name,
+                "saved_path": f"structured_data/{clean_filename}",
+                "message": f"Saved to structured_data/{clean_filename} and executed SQL into SQLite.",
+            }
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Failed to execute SQL script: {e}")
 
     try:
         def _read(raw: bytes, ext: str, skip: int = 0):
@@ -288,7 +305,7 @@ async def upload_file(file: UploadFile = File(...)):
         elif ext == ".json":
             df = pd.read_json(io.BytesIO(raw_bytes))
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported format '{ext}'. Use CSV, XLSX, JSON, or MD/TXT.")
+            raise HTTPException(status_code=400, detail=f"Unsupported format '{ext}'. Use CSV, XLSX, JSON, SQL, or MD/TXT.")
     except HTTPException:
         raise
     except Exception as e:
@@ -310,7 +327,10 @@ async def upload_file(file: UploadFile = File(...)):
             )
 
     conn = get_db()
+    # Explicitly drop existing table before recreating to ensure clean indexing and schema
+    conn.execute(f'DROP TABLE IF EXISTS "{table_name}";')
     df.to_sql(table_name, conn, if_exists="replace", index=False)
+    conn.commit()
     conn.close()
 
     return {
@@ -321,7 +341,7 @@ async def upload_file(file: UploadFile = File(...)):
         "columns": list(df.columns),
         "preview": df.head(3).to_dict(orient="records"),
         "saved_path": f"structured_data/{clean_filename}",
-        "message": f"Saved to structured_data/{clean_filename} and loaded into SQLite table '{table_name}'.",
+        "message": f"Saved to structured_data/{clean_filename}, replaced old table, and indexed into SQLite '{table_name}'.",
     }
 
 
@@ -434,7 +454,7 @@ def preview_table(table_name: str, limit: int = 10):
 
 @app.delete("/tables/{table_name}")
 def delete_table(table_name: str):
-    """Drop a table from SQLite — permanently deletes uploaded data."""
+    """Drop a table from SQLite and remove corresponding file from structured_data/."""
     if table_name not in list_tables():
         raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found.")
     safe_name = re.sub(r"[^a-z0-9_]", "", table_name)
@@ -442,6 +462,17 @@ def delete_table(table_name: str):
     conn.execute(f'DROP TABLE IF EXISTS "{safe_name}";')
     conn.commit()
     conn.close()
+
+    # Also clean up source file from structured_data/ if present
+    if os.path.exists(STRUCTURED_DIR):
+        for fname in os.listdir(STRUCTURED_DIR):
+            n, _ = os.path.splitext(fname)
+            if re.sub(r"[^a-z0-9_]", "_", n.lower()).strip("_") == safe_name:
+                try:
+                    os.remove(os.path.join(STRUCTURED_DIR, fname))
+                except Exception:
+                    pass
+
     return {"status": "deleted", "table": table_name}
 
 
