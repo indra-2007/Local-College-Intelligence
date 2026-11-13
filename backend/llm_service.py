@@ -93,6 +93,7 @@ def generate(
         "prompt": prompt,
         "stream": stream,
         "think": False,
+        "keep_alive": -1,   # keep model loaded in GPU VRAM indefinitely
     }
     if options:
         payload["options"] = options

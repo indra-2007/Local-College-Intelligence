@@ -30,6 +30,7 @@ interface Message {
   sqlMeta?: SqlMeta;
   result?: Record<string, unknown>[];
   docSources?: DocSource[];
+  timeTakenMs?: number;
 }
 
 export default function AIAssistantPage() {
@@ -137,6 +138,7 @@ export default function AIAssistantPage() {
             ...updated[updated.length - 1],
             content: data.answer || "I could not find this in the available documents.",
             docSources: data.sources ?? [],
+            timeTakenMs: data.time_taken_ms,
           };
           return updated;
         });
@@ -420,6 +422,14 @@ export default function AIAssistantPage() {
                       </span>
                     ))}
                   </div>
+                )}
+
+                {/* Timing badge for docs mode */}
+                {msg.role === "assistant" && msg.mode === "docs" && msg.timeTakenMs !== undefined && (
+                  <span className="text-[11px] text-on-surface-variant/60 flex items-center gap-0.5 mt-0.5 ml-1">
+                    <span className="material-symbols-outlined text-[12px]">timer</span>
+                    {(msg.timeTakenMs / 1000).toFixed(1)}s
+                  </span>
                 )}
 
                 {/* Generated SQL collapsible */}

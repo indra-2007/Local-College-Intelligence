@@ -184,24 +184,66 @@ def get_tables():
     return {"tables": result}
 
 
+# ─── Directories ─────────────────────────────────────────────────────────────
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+STRUCTURED_DIR = os.path.join(ROOT_DIR, "structured_data")
+UNSTRUCTURED_DIR = os.path.join(ROOT_DIR, "unstructured_data", "synthetic")
+
+
 # ─── Upload ───────────────────────────────────────────────────────────────────
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Receive a CSV/Excel/JSON from the frontend.
-    Save to disk → load into SQLite → return table name + preview.
+    Receive a file from the frontend:
+    - If .md / .txt: Save to unstructured_data/synthetic/ and rebuild RAG ChromaDB index.
+    - If .csv / .xlsx / .xls / .json: Save to structured_data/ and load into SQLite table.
     """
     filename = file.filename or "upload"
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
 
-    # Sanitise into a valid SQLite table name
+    raw_bytes = await file.read()
+
+    # ── 1. Unstructured documents for RAG (.md, .txt) ──
+    if ext in (".md", ".txt"):
+        os.makedirs(UNSTRUCTURED_DIR, exist_ok=True)
+        clean_filename = re.sub(r"[^\w\.\-]", "_", filename)
+        target_path = os.path.join(UNSTRUCTURED_DIR, clean_filename)
+        with open(target_path, "wb") as f:
+            f.write(raw_bytes)
+
+        # Trigger RAG ingest
+        indexing_error = None
+        try:
+            import backend.ingest as ingest
+            ingest.build_index()
+            # Invalidate cached Chroma collection in rag.py
+            import backend.rag as rag
+            rag._chroma_col = None
+        except Exception as e:
+            indexing_error = str(e)
+
+        return {
+            "status": "ok",
+            "type": "unstructured",
+            "filename": clean_filename,
+            "saved_path": f"unstructured_data/synthetic/{clean_filename}",
+            "message": f"Saved to unstructured_data/synthetic/{clean_filename}" + (
+                f" and indexed into ChromaDB." if not indexing_error else f", but indexing note: {indexing_error}"
+            ),
+        }
+
+    # ── 2. Structured data for SQL (.csv, .xlsx, .xls, .json) ──
     table_name = re.sub(r"[^a-z0-9_]", "_", name.lower()).strip("_")
     if not table_name:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    raw_bytes = await file.read()
+    os.makedirs(STRUCTURED_DIR, exist_ok=True)
+    clean_filename = re.sub(r"[^\w\.\-]", "_", filename)
+    target_path = os.path.join(STRUCTURED_DIR, clean_filename)
+    with open(target_path, "wb") as f:
+        f.write(raw_bytes)
 
     try:
         def _read(raw: bytes, ext: str, skip: int = 0):
@@ -213,10 +255,8 @@ async def upload_file(file: UploadFile = File(...)):
             """Return True if the first row looks like a banner/title, not real headers."""
             unnamed = sum(1 for c in df.columns if str(c).startswith("Unnamed:"))
             first = str(df.columns[0])
-            # Case 1: most columns unnamed (blank title row)
             if unnamed > len(df.columns) / 2:
                 return True
-            # Case 2: first column is a long sentence (e.g. "Student Master & Course…")
             if len(first) > 25 and (" " in first or "&" in first):
                 return True
             return False
@@ -232,25 +272,21 @@ async def upload_file(file: UploadFile = File(...)):
         elif ext == ".json":
             df = pd.read_json(io.BytesIO(raw_bytes))
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported format '{ext}'. Use CSV, XLSX, or JSON.")
+            raise HTTPException(status_code=400, detail=f"Unsupported format '{ext}'. Use CSV, XLSX, JSON, or MD/TXT.")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Could not parse file: {e}")
 
-    # Sanitise column names too
-    df.columns = [re.sub(r"[^a-z0-9_]", "_", c.strip().lower()) for c in df.columns]
+    df.columns = [re.sub(r"[^a-z0-9_]", "_", str(c).strip().lower()) for c in df.columns]
 
-    # ── Clean percentage strings → real numbers ───────────────────────────────
-    # If a column has values like "75%", "100%", strip "%" and store as REAL
-    # so SQL comparisons like WHERE attendance < 80 work correctly (not as strings).
+    # Clean percentage strings → real numbers
     for col in df.select_dtypes(include=['object', 'str']).columns:
         non_null = df[col].dropna()
         if len(non_null) == 0:
             continue
         str_vals = non_null.astype(str).str.strip()
         pct_matches = str_vals[str_vals.str.match(r"^\d+(\.\d+)?%$")]
-        # Convert if more than half the non-null values are percentage strings
         if len(pct_matches) > 0 and (len(pct_matches) / len(str_vals)) > 0.5:
             df[col] = pd.to_numeric(
                 df[col].astype(str).str.strip().str.rstrip("%"),
@@ -263,11 +299,28 @@ async def upload_file(file: UploadFile = File(...)):
 
     return {
         "status": "ok",
+        "type": "structured",
         "table": table_name,
         "rows": len(df),
         "columns": list(df.columns),
         "preview": df.head(3).to_dict(orient="records"),
+        "saved_path": f"structured_data/{clean_filename}",
+        "message": f"Saved to structured_data/{clean_filename} and loaded into SQLite table '{table_name}'.",
     }
+
+
+@app.get("/documents")
+def list_documents():
+    """List all RAG documents stored in unstructured_data/synthetic."""
+    if not os.path.exists(UNSTRUCTURED_DIR):
+        return {"documents": []}
+    docs = []
+    for f in sorted(os.listdir(UNSTRUCTURED_DIR)):
+        if f.endswith((".md", ".txt")):
+            full_path = os.path.join(UNSTRUCTURED_DIR, f)
+            size = os.path.getsize(full_path)
+            docs.append({"name": f, "size": size})
+    return {"documents": docs}
 
 
 # ─── Ask SQL ──────────────────────────────────────────────────────────────────
