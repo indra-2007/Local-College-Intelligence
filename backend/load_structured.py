@@ -86,3 +86,4 @@ def load_all_structured(overwrite: bool = True):
 
 if __name__ == "__main__":
     load_all_structured()
+
