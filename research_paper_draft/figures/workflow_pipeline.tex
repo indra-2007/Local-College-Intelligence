@@ -1,0 +1,40 @@
+% Dual-Stream Processing Workflow Diagram in TikZ
+\begin{tikzpicture}[node distance=1.1cm, auto,
+  stepnode/.style={rectangle, draw=black!70, fill=white, rounded corners, text width=2.8cm, text centered, minimum height=0.75cm, font=\scriptsize},
+  decision/.style={diamond, draw=orange!80, fill=orange!10, text width=1.5cm, text centered, inner sep=1pt, font=\scriptsize},
+  arrow/.style={thick, ->, >=stealth}]
+
+  \node [stepnode, fill=blue!10] (input) {Natural Language Query\\+ User Session / Role};
+  \node [decision, below=0.8cm of input] (route) {Query Modality?};
+
+  % SQL Stream (Left)
+  \node [stepnode, below left=1.0cm and 0.5cm of route] (schema) {Introspect SQLite Schema\\(\texttt{PRAGMA table\_info})};
+  \node [stepnode, below=0.6cm of schema] (sqlgen) {LLM Generates SQL\\(Constrained Few-Shot Prompt)};
+  \node [stepnode, below=0.6cm of sqlgen, fill=red!10] (guard) {Deterministic AST Guard\\(Enforce SELECT, Block Write)};
+  \node [stepnode, below=0.6cm of guard, fill=green!10] (sqlexec) {Execute Query in SQLite\\\& Render Table View};
+
+  % RAG Stream (Right)
+  \node [stepnode, below right=1.0cm and 0.5cm of route] (embed) {Dense Question Embedding\\$\mathbf{q} = \text{Embed}(Q) \in \mathbb{R}^{384}$};
+  \node [stepnode, below=0.6cm of embed] (chroma) {Pre-filtered Nearest Neighbor\\$\arg\max_{\mathbf{d} \in \mathcal{D}_{\text{role}}} \mathbf{q} \cdot \mathbf{d}$};
+  \node [stepnode, below=0.6cm of chroma] (ctx) {Context Injection + Rules\\(\texttt{/no\_think}, Strict Citation)};
+  \node [stepnode, below=0.6cm of ctx, fill=purple!10] (raggen) {Local LLM Synthesis\\+ Response Time Metric};
+
+  % Final merge
+  \node [stepnode, below=5.5cm of route, fill=gray!15, text width=5.5cm] (output) {Encrypted Response to Client UI\\(Data Table / Grounded Text + Sources + Timing)};
+
+  % Arrows
+  \draw [arrow] (input) -- (route);
+  \draw [arrow] (route) -| node[above, font=\tiny, near start] {Ask Data} (schema);
+  \draw [arrow] (route) -| node[above, font=\tiny, near start] {Ask Docs} (embed);
+
+  \draw [arrow] (schema) -- (sqlgen);
+  \draw [arrow] (sqlgen) -- (guard);
+  \draw [arrow] (guard) -- (sqlexec);
+  \draw [arrow] (sqlexec) |- (output);
+
+  \draw [arrow] (embed) -- (chroma);
+  \draw [arrow] (chroma) -- (ctx);
+  \draw [arrow] (ctx) -- (raggen);
+  \draw [arrow] (raggen) |- (output);
+\end{tikzpicture}
+

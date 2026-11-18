@@ -26,22 +26,58 @@ def _resolve_ollama_base_url() -> str:
     if env_url:
         return env_url.rstrip("/")
 
-    # 2. If running inside WSL, Windows host is the default gateway / nameserver
+    import socket
+
+    # Candidates to check
+    candidates = ["http://127.0.0.1:11434", "http://localhost:11434"]
+
+    # 2. If running inside WSL, find the real Windows gateway via `ip route`
     try:
         if os.path.exists("/proc/version"):
             with open("/proc/version", "r") as f:
                 if "microsoft" in f.read().lower():
-                    # Read nameserver from /etc/resolv.conf
+                    # Method A: `ip route show default`
+                    try:
+                        import subprocess
+                        out = subprocess.check_output(["ip", "route", "show", "default"], text=True).strip()
+                        parts = out.split()
+                        if "via" in parts:
+                            gw = parts[parts.index("via") + 1]
+                            if not gw.startswith("10.255."):
+                                candidates.insert(0, f"http://{gw}:11434")
+                    except Exception:
+                        pass
+
+                    # Method B: /etc/resolv.conf (skip 10.255.x.x and 127.x.x.x DNS stubs)
                     if os.path.exists("/etc/resolv.conf"):
                         with open("/etc/resolv.conf", "r") as rf:
                             for line in rf:
                                 if line.strip().startswith("nameserver"):
-                                    host_ip = line.split()[1].strip()
-                                    return f"http://{host_ip}:11434"
+                                    ns = line.split()[1].strip()
+                                    if not ns.startswith("10.255.") and not ns.startswith("127."):
+                                        candidates.insert(0, f"http://{ns}:11434")
     except Exception:
         pass
 
-    # 3. Default to localhost (native Windows, native Linux, or mirrored networking)
+    # Quick socket probe: return the first candidate whose port is actually open
+    for url in candidates:
+        try:
+            host = url.split("://")[1].split(":")[0]
+            port = int(url.split(":")[-1])
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.3)
+            if s.connect_ex((host, port)) == 0:
+                s.close()
+                return url
+            s.close()
+        except Exception:
+            pass
+
+    # Fallback to the first non-localhost candidate if found, else 127.0.0.1
+    for c in candidates:
+        if "127.0.0.1" not in c and "localhost" not in c:
+            return c
+
     return "http://127.0.0.1:11434"
 
 
