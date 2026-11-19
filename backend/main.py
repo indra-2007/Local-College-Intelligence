@@ -33,7 +33,8 @@ def startup():
     """
     1. Create auth/chat DB tables and seed dev accounts if not present.
     2. Auto-load structured data from structured_data/ into SQLite if tables are missing.
-    3. Warmup Ollama so the first real query isn't slow.
+    3. Pre-load embedding model + ChromaDB collection into memory.
+    4. Warmup Ollama so the LLM is fully loaded in GPU VRAM before the first query.
     """
     # Ensure auth + chat persistence tables exist
     from backend.auth_storage import init_storage_db as _init_db
@@ -47,16 +48,36 @@ def startup():
     except Exception as e:
         print(f"[startup] Note on structured data sync: {e}")
 
-    # Warmup: send a no-op request so model weights are in RAM
+    # ── Pre-load RAG components (embedding model + ChromaDB) ──────────────
+    # This loads the ~80 MB sentence-transformers model and opens the
+    # ChromaDB collection so the first /ask-docs call has zero cold-start.
+    try:
+        from backend.rag import _get_embedder, _get_collection
+        print("[startup] Loading embedding model into memory …")
+        _get_embedder()
+        print("[startup] ✓ Embedding model loaded.")
+        print("[startup] Opening ChromaDB collection …")
+        _get_collection()
+        print("[startup] ✓ ChromaDB collection ready.")
+    except Exception as e:
+        print(f"[startup] RAG pre-load note: {e}")
+
+    # ── Warmup Ollama: force LLM into GPU VRAM ───────────────────────────
+    # Uses the same num_ctx as the real RAG/SQL pipelines (2048) so Ollama
+    # allocates the full KV cache now, not on the first user query.
+    # keep_alive=-1 (set in llm_service.py) prevents unloading.
+    model = llm_service.get_active_model()
+    print(f"[startup] Warming up Ollama model '{model}' (loading into GPU VRAM) …")
     try:
         llm_service.generate(
             prompt="hi",
-            model=llm_service.get_active_model(),
+            model=model,
             num_predict=1,
-            num_ctx=512,
+            num_ctx=2048,
         )
-    except Exception:
-        pass  # non-fatal — server still starts even if Ollama is not yet up
+        print(f"[startup] ✓ Model '{model}' loaded and ready in GPU VRAM.")
+    except Exception as e:
+        print(f"[startup] ⚠ Ollama warmup failed (server still starts): {e}")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
