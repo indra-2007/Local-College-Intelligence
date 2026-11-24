@@ -1,6 +1,33 @@
+"use client";
+
 import Image from "next/image";
+import { useState, useEffect } from "react";
+
+interface GpuStats {
+  available: boolean;
+  gpu_util_pct?: number;
+  mem_used_mb?: number;
+  mem_total_mb?: number;
+  temperature_c?: number;
+  gpu_name?: string;
+  error?: string;
+}
 
 export default function Header() {
+  const [gpu, setGpu] = useState<GpuStats | null>(null);
+
+  useEffect(() => {
+    const fetchGpu = () => {
+      fetch("/api/gpu")
+        .then((r) => r.json())
+        .then((data: GpuStats) => setGpu(data))
+        .catch(() => setGpu({ available: false, error: "unreachable" }));
+    };
+    fetchGpu();
+    const interval = setInterval(fetchGpu, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-surface/85 backdrop-blur-xl border-b border-surface-variant z-50">
       <div className="w-full h-full px-space-lg flex items-center justify-between">
@@ -22,12 +49,37 @@ export default function Header() {
           </div>
         </div>
         <div className="flex items-center gap-space-lg">
+          {/* ── GPU Stats Widget ── */}
+          {gpu?.available ? (
+            <div className="hidden md:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-tertiary-container/40 border border-tertiary text-on-tertiary-container">
+              <span className="material-symbols-outlined text-[14px]">memory</span>
+              <span className="font-label-sm text-label-sm font-medium">
+                GPU {gpu.gpu_util_pct}%
+              </span>
+              <span className="text-on-surface-variant font-label-sm text-label-sm">|</span>
+              <span className="font-label-sm text-label-sm font-medium">
+                {gpu.mem_used_mb}&#8239;/&#8239;{gpu.mem_total_mb}&#8239;MB
+              </span>
+              <span className="text-on-surface-variant font-label-sm text-label-sm">|</span>
+              <span className="font-label-sm text-label-sm font-medium">
+                {gpu.temperature_c}°C
+              </span>
+            </div>
+          ) : gpu !== null && !gpu.available ? (
+            <div className="hidden md:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-error-container/40 border border-error text-on-error-container">
+              <span className="material-symbols-outlined text-[14px]">warning</span>
+              <span className="font-label-sm text-label-sm">GPU N/A</span>
+            </div>
+          ) : null}
+
+          {/* ── Local AI Online badge ── */}
           <div className="hidden sm:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-secondary-container/40 border border-secondary">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             <span className="font-label-sm text-label-sm text-on-secondary-container font-medium">
               Local AI Online
             </span>
           </div>
+
           <div className="flex items-center gap-space-md pl-space-md border-l border-surface-variant">
             <div className="text-right hidden md:block">
               <div className="font-label-md text-label-md text-on-surface font-medium leading-tight">

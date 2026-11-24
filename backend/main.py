@@ -47,16 +47,39 @@ def startup():
     except Exception as e:
         print(f"[startup] Note on structured data sync: {e}")
 
-    # Warmup: send a no-op request so model weights are in RAM
+    # ── Stage 1: Pre-load RAG singletons (embedder + ChromaDB collection) ──
+    print("[startup] Pre-loading RAG embedder and ChromaDB collection ...")
+    try:
+        from backend.rag import _get_embedder, _get_collection
+        _get_embedder()
+        _get_collection()
+        print("[startup] ✓ RAG embedder and ChromaDB collection loaded.")
+    except Exception as e:
+        print(f"[startup] ⚠ RAG pre-load note: {e}")
+
+    # ── Stage 2: LLM warmup — load model weights into GPU VRAM ──────────
+    print("[startup] Warming up LLM (loading weights into GPU VRAM) ...")
     try:
         llm_service.generate(
             prompt="hi",
             model=llm_service.get_active_model(),
             num_predict=1,
-            num_ctx=512,
+            num_ctx=2048,
         )
+        print("[startup] ✓ LLM loaded into GPU VRAM.")
     except Exception:
         pass  # non-fatal — server still starts even if Ollama is not yet up
+
+    # ── Stage 3: Full end-to-end RAG pipeline warmup ─────────────────────
+    # Runs a real question through embed → chroma → LLM so the first actual
+    # user query has zero cold-start latency.
+    print("[startup] Running full RAG pipeline warmup ...")
+    try:
+        from backend.rag import answer_question
+        answer_question("What is the minimum attendance required?", "student")
+        print("[startup] ✓ RAG pipeline fully warm — first query will be instant.")
+    except Exception as e:
+        print(f"[startup] ⚠ RAG warmup query failed (server still starts): {e}")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -169,6 +192,43 @@ def set_active_model(req: SetModelRequest):
 
 
 # ─── Health & Tables ──────────────────────────────────────────────────────────
+
+import subprocess
+
+
+@app.get("/gpu")
+def gpu_stats():
+    """Return live GPU stats from nvidia-smi (runs on the server machine)."""
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu,memory.total,memory.used,memory.free,temperature.gpu,name",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return {"available": False, "error": result.stderr.strip()}
+
+        line = result.stdout.strip().split("\n")[0]
+        parts = [p.strip() for p in line.split(",")]
+        return {
+            "available": True,
+            "gpu_util_pct": int(parts[0]),
+            "mem_total_mb": int(parts[1]),
+            "mem_used_mb": int(parts[2]),
+            "mem_free_mb": int(parts[3]),
+            "temperature_c": int(parts[4]),
+            "gpu_name": parts[5],
+        }
+    except FileNotFoundError:
+        return {"available": False, "error": "nvidia-smi not found"}
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
 
 @app.get("/health")
 def health():
