@@ -33,8 +33,7 @@ def startup():
     """
     1. Create auth/chat DB tables and seed dev accounts if not present.
     2. Auto-load structured data from structured_data/ into SQLite if tables are missing.
-    3. Pre-load embedding model + ChromaDB collection into memory.
-    4. Warmup Ollama so the LLM is fully loaded in GPU VRAM before the first query.
+    3. Warmup Ollama so the first real query isn't slow.
     """
     # Ensure auth + chat persistence tables exist
     from backend.auth_storage import init_storage_db as _init_db
@@ -48,36 +47,39 @@ def startup():
     except Exception as e:
         print(f"[startup] Note on structured data sync: {e}")
 
-    # ── Pre-load RAG components (embedding model + ChromaDB) ──────────────
-    # This loads the ~80 MB sentence-transformers model and opens the
-    # ChromaDB collection so the first /ask-docs call has zero cold-start.
+    # ── Stage 1: Pre-load RAG singletons (embedder + ChromaDB collection) ──
+    print("[startup] Pre-loading RAG embedder and ChromaDB collection ...")
     try:
         from backend.rag import _get_embedder, _get_collection
-        print("[startup] Loading embedding model into memory …")
         _get_embedder()
-        print("[startup] ✓ Embedding model loaded.")
-        print("[startup] Opening ChromaDB collection …")
         _get_collection()
-        print("[startup] ✓ ChromaDB collection ready.")
+        print("[startup] ✓ RAG embedder and ChromaDB collection loaded.")
     except Exception as e:
-        print(f"[startup] RAG pre-load note: {e}")
+        print(f"[startup] ⚠ RAG pre-load note: {e}")
 
-    # ── Warmup Ollama: force LLM into GPU VRAM ───────────────────────────
-    # Uses the same num_ctx as the real RAG/SQL pipelines (2048) so Ollama
-    # allocates the full KV cache now, not on the first user query.
-    # keep_alive=-1 (set in llm_service.py) prevents unloading.
-    model = llm_service.get_active_model()
-    print(f"[startup] Warming up Ollama model '{model}' (loading into GPU VRAM) …")
+    # ── Stage 2: LLM warmup — load model weights into GPU VRAM ──────────
+    print("[startup] Warming up LLM (loading weights into GPU VRAM) ...")
     try:
         llm_service.generate(
             prompt="hi",
-            model=model,
+            model=llm_service.get_active_model(),
             num_predict=1,
             num_ctx=2048,
         )
-        print(f"[startup] ✓ Model '{model}' loaded and ready in GPU VRAM.")
+        print("[startup] ✓ LLM loaded into GPU VRAM.")
+    except Exception:
+        pass  # non-fatal — server still starts even if Ollama is not yet up
+
+    # ── Stage 3: Full end-to-end RAG pipeline warmup ─────────────────────
+    # Runs a real question through embed → chroma → LLM so the first actual
+    # user query has zero cold-start latency.
+    print("[startup] Running full RAG pipeline warmup ...")
+    try:
+        from backend.rag import answer_question
+        answer_question("What is the minimum attendance required?", "student")
+        print("[startup] ✓ RAG pipeline fully warm — first query will be instant.")
     except Exception as e:
-        print(f"[startup] ⚠ Ollama warmup failed (server still starts): {e}")
+        print(f"[startup] ⚠ RAG warmup query failed (server still starts): {e}")
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -190,6 +192,43 @@ def set_active_model(req: SetModelRequest):
 
 
 # ─── Health & Tables ──────────────────────────────────────────────────────────
+
+import subprocess
+
+
+@app.get("/gpu")
+def gpu_stats():
+    """Return live GPU stats from nvidia-smi (runs on the server machine)."""
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu,memory.total,memory.used,memory.free,temperature.gpu,name",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return {"available": False, "error": result.stderr.strip()}
+
+        line = result.stdout.strip().split("\n")[0]
+        parts = [p.strip() for p in line.split(",")]
+        return {
+            "available": True,
+            "gpu_util_pct": int(parts[0]),
+            "mem_total_mb": int(parts[1]),
+            "mem_used_mb": int(parts[2]),
+            "mem_free_mb": int(parts[3]),
+            "temperature_c": int(parts[4]),
+            "gpu_name": parts[5],
+        }
+    except FileNotFoundError:
+        return {"available": False, "error": "nvidia-smi not found"}
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
 
 @app.get("/health")
 def health():
