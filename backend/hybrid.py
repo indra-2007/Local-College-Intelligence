@@ -85,41 +85,46 @@ def _extract_sql(raw: str) -> str:
 
 # ─── Step 1: Query Router ────────────────────────────────────────────────────
 
-def _compact_schema_hint(schema: str) -> str:
-    """Extract compact `table(col1, col2, ...)` lines for the router prompt."""
-    lines = []
-    for block in schema.split("\n\n"):
-        first = block.splitlines()[0] if block else ""
-        m = re.match(r"\[([^\]]+)\]\s+Columns:\s*(.+)", first)
-        if m:
-            tname = m.group(1)
-            cols = [c.strip().split()[0] for c in m.group(2).split(",")]
-            lines.append(f"{tname}({', '.join(cols[:15])}{'...' if len(cols) > 15 else ''})")
-    return "; ".join(lines) if lines else "none"
+_DATA_SIGNALS = (
+    "average", "avg", "mean", "count", "how many", "which students", "list students",
+    "list all students", "top ", "lowest", "highest", "scored", "score", "cie marks",
+    "total cie", "el score", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8",
+    "attendance %", "classes attended", "usn", "1rv", "branch", "section",
+)
+_DOC_SIGNALS = (
+    "policy", "policies", "regulation", "regulations", "handbook", "circular",
+    "syllabus", "syllabi", "document", "threshold", "target", "attainment",
+    "eligibility", "eligible", "condonation", "scheme", "rule", "rules", "criteria",
+    "stand for", "represent", "meaning", "definition", "consequence", "penalty",
+)
 
 
-def route_query(question: str, tables: list[str], model: str | None = None, schema: str = "") -> str:
+def route_query(question: str, tables: list[str], model: str | None = None) -> str:
     """
     Use the LLM to classify the query as SQL_ONLY, RAG_ONLY, or HYBRID.
     Returns one of the three constants.
+    Includes a deterministic safeguard so queries combining data/aggregation
+    signals with policy/document signals are never downgraded to RAG_ONLY.
     Falls back to RAG_ONLY on any failure.
     """
-    sql_hint = _compact_schema_hint(schema) if schema else (", ".join(tables) if tables else "none")
+    sql_hint = ", ".join(tables) if tables else "none"
     prompt = (
         "/no_think Classify the user question for an institutional AI system.\n\n"
-        f"Available SQL tables & columns: {sql_hint}\n"
-        "Available document types: regulations, handbooks, circulars, syllabi, CO-PO mappings, attendance policies, fee policies.\n\n"
+        f"Available SQL tables: {sql_hint} (contain student records, attendance %, CIE marks Q1-Q8, EL scores, CO/PO tags, CGPA).\n"
+        "Available document types: regulations, handbooks, circulars, syllabi, CO-PO attainment targets, attendance policies, fee policies.\n\n"
         "Return ONLY valid JSON with one key 'route' whose value is exactly one of: "
         '"SQL_ONLY", "RAG_ONLY", "HYBRID".\n\n'
         "Rules:\n"
-        '- HYBRID: question asks for BOTH student/course numbers/averages/records from SQL tables AND a policy/target/rule/definition from documents '
-        '(e.g. "who is below the minimum attendance threshold?", "average CIE marks compared to CO1 target in document", "which students fail the regulation cutoff?").\n'
-        '- SQL_ONLY: question ONLY asks for numbers, counts, averages, or records from SQL tables with no policy/document comparison.\n'
-        '- RAG_ONLY: question ONLY asks about policies, rules, procedures, regulations, handbooks, or syllabi with no student/table data.\n\n'
+        '- SQL_ONLY: question asks ONLY for numbers/records/averages from tables (e.g. "average CIE marks per branch", "top 5 students by CGPA").\n'
+        '- RAG_ONLY: question asks ONLY about policies, rules, procedures, regulations, handbooks, syllabi, or definitions (no student numbers).\n'
+        '- HYBRID: question needs BOTH database numbers/averages/student scores AND policy/document/target context '
+        '(e.g. "who is below the minimum attendance threshold?", "what is the average CIE score on CO1/PO1 compared to the CO1 attainment target?").\n'
+        'If a question asks for averages, scores, or student lists AND compares them to a policy, threshold, target, or document, choose "HYBRID".\n\n'
         f"Question: {question}\n\n"
         'JSON response (only the JSON, nothing else):'
     )
 
+    route = RAG_ONLY
     try:
         result = llm_service.generate(
             prompt=prompt,
@@ -128,19 +133,28 @@ def route_query(question: str, tables: list[str], model: str | None = None, sche
             num_predict=30,
             num_ctx=1024,
         )
+        raw = result.get("response", "").strip()
+        m = re.search(r'\{.*?"route"\s*:\s*"(SQL_ONLY|RAG_ONLY|HYBRID)".*?\}', raw, re.DOTALL)
+        if m:
+            route = m.group(1)
+        else:
+            for label in (HYBRID, SQL_ONLY, RAG_ONLY):
+                if label in raw.upper():
+                    route = label
+                    break
     except Exception:
-        return RAG_ONLY
+        route = RAG_ONLY
 
-    raw = result.get("response", "").strip()
-    # Try to extract JSON even if model adds surrounding text
-    m = re.search(r'\{.*?"route"\s*:\s*"(SQL_ONLY|RAG_ONLY|HYBRID)".*?\}', raw, re.DOTALL)
-    if m:
-        return m.group(1)
-    # Fallback: keyword scan
-    for label in (HYBRID, SQL_ONLY, RAG_ONLY):
-        if label in raw.upper():
-            return label
-    return RAG_ONLY
+    # Deterministic safeguard: if both data signals and doc signals are present and tables exist,
+    # ensure we run HYBRID rather than dropping SQL or RAG.
+    if tables and route != HYBRID:
+        q_lower = question.lower()
+        has_data = any(sig in q_lower for sig in _DATA_SIGNALS)
+        has_doc = any(sig in q_lower for sig in _DOC_SIGNALS)
+        if has_data and has_doc:
+            return HYBRID
+
+    return route
 
 
 # ─── Step 2a: SQL sub-task ───────────────────────────────────────────────────
@@ -221,7 +235,7 @@ def run_sql(
 
 # ─── Step 2b: RAG sub-task ───────────────────────────────────────────────────
 
-def run_rag(question: str, role: str, k: int = 4) -> dict:
+def run_rag(question: str, role: str, k: int = 6) -> dict:
     """
     Retrieve top-k role-filtered chunks from ChromaDB.
     Returns { chunks: [(text, source, section, distance)], sources }.
@@ -327,7 +341,7 @@ def synthesize(
             model=model,
             temperature=0.1,
             num_predict=350,
-            num_ctx=3072,
+            num_ctx=4096,
         )
     except RuntimeError as e:
         return f"[LLM error: {e}]"
@@ -366,7 +380,7 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
     tables, schema = _get_schema()
 
     # ── 1. Route classification ───────────────────────────────────────────────
-    route = route_query(question, tables, model, schema=schema)
+    route = route_query(question, tables, model)
 
     # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None
