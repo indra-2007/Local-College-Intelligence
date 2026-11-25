@@ -536,6 +536,37 @@ def delete_table(table_name: str):
     return {"status": "deleted", "table": table_name}
 
 
+# ─── Hybrid Unified Query ────────────────────────────────────────────────────
+
+class AskRequest2(BaseModel):
+    question: str
+    role: str          # "student" | "faculty" | "hod" | "admin"
+    model: str | None = None
+
+
+@app.post("/ask")
+def ask(req: AskRequest2):
+    """
+    Unified hybrid query endpoint (C-GPT).
+
+    Automatically routes between SQL_ONLY, RAG_ONLY, and HYBRID depending on
+    the nature of the question. Runs sub-tasks, fuses results, and returns a
+    single grounded answer with full execution transparency.
+    """
+    from backend.hybrid import ask as hybrid_ask
+    try:
+        result = hybrid_ask(
+            question=req.question,
+            role=req.role,
+            model=req.model,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return result
+
+
 # ─── RAG / Unstructured docs ──────────────────────────────────────────────────
 
 class AskDocsRequest(BaseModel):
