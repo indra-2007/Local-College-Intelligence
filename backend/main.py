@@ -399,7 +399,7 @@ async def upload_file(file: UploadFile = File(...)):
         "table": table_name,
         "rows": len(df),
         "columns": list(df.columns),
-        "preview": df.head(3).to_dict(orient="records"),
+        "preview": df.head(3).astype(object).where(pd.notnull(df.head(3)), None).to_dict(orient="records"),
         "saved_path": f"structured_data/{clean_filename}",
         "message": f"Saved to structured_data/{clean_filename}, replaced old table, and indexed into SQLite '{table_name}'.",
     }
@@ -492,9 +492,10 @@ def ask_sql(req: AskRequest):
         }
     conn.close()
 
+    clean_df = result_df.astype(object).where(pd.notnull(result_df), None)
     return {
         "sql": generated_sql,
-        "result": result_df.to_dict(orient="records"),
+        "result": clean_df.to_dict(orient="records"),
         "row_count": len(result_df),
         "columns": list(result_df.columns),
     }
@@ -509,7 +510,8 @@ def preview_table(table_name: str, limit: int = 10):
     conn = get_db()
     df = pd.read_sql_query(f"SELECT * FROM {table_name} LIMIT {limit};", conn)
     conn.close()
-    return {"table": table_name, "columns": list(df.columns), "rows": df.to_dict(orient="records")}
+    clean_df = df.astype(object).where(pd.notnull(df), None)
+    return {"table": table_name, "columns": list(df.columns), "rows": clean_df.to_dict(orient="records")}
 
 
 @app.delete("/tables/{table_name}")
