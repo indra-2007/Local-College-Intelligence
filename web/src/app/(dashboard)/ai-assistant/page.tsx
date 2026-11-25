@@ -7,7 +7,8 @@ import {
   generateId,
 } from "@/lib/storage";
 
-type Mode = "chat" | "data" | "docs";
+type Mode = "chat" | "data" | "docs" | "ask";
+type RouteLabel = "SQL_ONLY" | "RAG_ONLY" | "HYBRID";
 
 interface SqlMeta {
   sql?: string;
@@ -27,6 +28,7 @@ interface Message {
   content: string;
   timestamp: string;
   mode: Mode;
+  route?: RouteLabel;
   sqlMeta?: SqlMeta;
   result?: Record<string, unknown>[];
   docSources?: DocSource[];
@@ -41,7 +43,7 @@ export default function AIAssistantPage() {
   const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsError, setModelsError] = useState("");
-  const [mode, setMode] = useState<Mode>("chat");
+  const [mode, setMode] = useState<Mode>("ask");
   const [tableCount, setTableCount] = useState(0);
   const [docsRole, setDocsRole] = useState("student");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -121,7 +123,7 @@ export default function AIAssistantPage() {
         const res = await fetch("/api/ask-docs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || "qwen3-4b" }),
+          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || undefined }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -155,13 +157,64 @@ export default function AIAssistantPage() {
       return;
     }
 
+    // ── ASK MODE: Unified Hybrid Pipeline ──────────────────────────────────
+    if (mode === "ask") {
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || undefined }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const errMsg =
+            res.status === 404
+              ? "Backend endpoint /ask not found (404). Pull latest code and restart FastAPI on port 8000."
+              : data.detail || data.error || "Backend error.";
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: errMsg };
+            return updated;
+          });
+          return;
+        }
+        const cols: string[] = data.sql_columns ?? [];
+        const rows: Record<string, unknown>[] = data.sql_result ?? [];
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: data.answer || "I could not find this in the available data.",
+            route: data.route as RouteLabel,
+            sqlMeta: data.sql_query
+              ? { sql: data.sql_query, row_count: data.sql_row_count ?? 0, columns: cols, error: data.sql_error ?? undefined }
+              : undefined,
+            result: rows.length > 0 ? rows : undefined,
+            docSources: data.doc_sources ?? [],
+            timeTakenMs: data.time_taken_ms,
+          };
+          return updated;
+        });
+      } catch {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: "[ERROR]: Could not reach the backend." };
+          return updated;
+        });
+      } finally {
+        setIsLoading(false);
+        abortRef.current = null;
+      }
+      return;
+    }
+
     // ── DATA MODE: route through FastAPI ask-sql pipeline ──
     if (mode === "data") {
       try {
         const res = await fetch("/api/ask-sql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: userMessage, model: model || "qwen3:4b" }),
+          body: JSON.stringify({ prompt: userMessage, model: model || undefined }),
         });
         const data = await res.json();
 
@@ -328,6 +381,17 @@ export default function AIAssistantPage() {
               <span className="material-symbols-outlined text-[16px]">menu_book</span>
               Ask Docs
             </button>
+            <button
+              onClick={() => setMode("ask")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                mode === "ask"
+                  ? "bg-primary text-on-primary shadow-sm ring-2 ring-primary/40"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+              Ask
+            </button>
           </div>
 
           {/* Model picker */}
@@ -432,6 +496,32 @@ export default function AIAssistantPage() {
                   </span>
                 )}
 
+                {/* Route badge + timing for Ask mode */}
+                {msg.role === "assistant" && msg.mode === "ask" && (
+                  <div className="flex items-center gap-2 mt-1 ml-1 flex-wrap">
+                    {msg.route && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        msg.route === "HYBRID"
+                          ? "bg-primary/10 border-primary/30 text-primary"
+                          : msg.route === "SQL_ONLY"
+                          ? "bg-secondary/10 border-secondary/30 text-secondary"
+                          : "bg-tertiary/10 border-tertiary/30 text-tertiary"
+                      }`}>
+                        <span className="material-symbols-outlined text-[11px]">
+                          {msg.route === "HYBRID" ? "merge" : msg.route === "SQL_ONLY" ? "table_chart" : "menu_book"}
+                        </span>
+                        {msg.route.replace("_", " ")}
+                      </span>
+                    )}
+                    {msg.timeTakenMs !== undefined && (
+                      <span className="text-[11px] text-on-surface-variant/60 flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[12px]">timer</span>
+                        {(msg.timeTakenMs / 1000).toFixed(1)}s
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Generated SQL collapsible */}
                 {msg.sqlMeta?.sql && (
                   <div className="max-w-[80%] w-full">
@@ -512,6 +602,22 @@ export default function AIAssistantPage() {
               </select>
             </div>
           )}
+          {mode === "ask" && (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
+              <p className="text-xs text-on-surface-variant">Hybrid AI — auto-routes between SQL data, documents, or both</p>
+              <select
+                value={docsRole}
+                onChange={(e) => setDocsRole(e.target.value)}
+                className="ml-auto px-2 py-1 rounded-lg bg-surface-container border border-surface-variant text-on-surface text-xs focus:outline-none"
+              >
+                <option value="student">student</option>
+                <option value="faculty">faculty</option>
+                <option value="hod">hod</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
             <input
               type="text"
@@ -524,6 +630,8 @@ export default function AIAssistantPage() {
                   ? "Ask about your data… e.g. How many students attended?"
                   : mode === "docs"
                   ? "Ask about regulations, circulars, syllabus…"
+                  : mode === "ask"
+                  ? "Ask anything — data, policies, or both… e.g. Who is below the attendance threshold?"
                   : model ? "Ask anything…" : "Waiting for model connection..."
               }
             />

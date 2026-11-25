@@ -17,8 +17,9 @@ from backend.config import (
     DEFAULT_MODEL,
 )
 
-# ── Active model state ────────────────────────────────────────────────────────
+# ── Active model state & GPU serialization ────────────────────────────────────
 _lock = threading.Lock()
+_llm_semaphore = threading.Semaphore(1)  # Serialize non-streaming LLM calls for GPU VRAM
 _active_model: str = DEFAULT_MODEL
 
 
@@ -98,25 +99,42 @@ def generate(
     if options:
         payload["options"] = options
 
-    try:
-        resp = requests.post(
-            OLLAMA_GENERATE_URL,
-            json=payload,
-            stream=stream,
-            timeout=120,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.ConnectionError:
-        raise RuntimeError(
-            f"Cannot reach Ollama at {OLLAMA_GENERATE_URL}. "
-            "Make sure Ollama is running. "
-            "If running in WSL, set OLLAMA_BASE_URL=http://172.28.224.1:11434 in your .env file."
-        )
-    except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Ollama request failed: {e}")
-
     if stream:
-        return resp  # caller iterates the streaming response
+        try:
+            resp = requests.post(
+                OLLAMA_GENERATE_URL,
+                json=payload,
+                stream=True,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            return resp  # caller iterates the streaming response
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                f"Cannot reach Ollama at {OLLAMA_GENERATE_URL}. "
+                "Make sure Ollama is running. "
+                "If running in WSL, set OLLAMA_BASE_URL=http://172.28.224.1:11434 in your .env file."
+            )
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Ollama request failed: {e}")
 
-    return resp.json()
+    with _llm_semaphore:
+        try:
+            resp = requests.post(
+                OLLAMA_GENERATE_URL,
+                json=payload,
+                stream=False,
+                timeout=120,
+            )
+            resp.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                f"Cannot reach Ollama at {OLLAMA_GENERATE_URL}. "
+                "Make sure Ollama is running. "
+                "If running in WSL, set OLLAMA_BASE_URL=http://172.28.224.1:11434 in your .env file."
+            )
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Ollama request failed: {e}")
+
+        return resp.json()
 
