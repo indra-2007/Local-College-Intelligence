@@ -167,9 +167,13 @@ export default function AIAssistantPage() {
         });
         const data = await res.json();
         if (!res.ok) {
+          const errMsg =
+            res.status === 404
+              ? "Backend endpoint /ask not found (404). Pull latest code and restart FastAPI on port 8000."
+              : data.detail || data.error || "Backend error.";
           setMessages((prev) => {
             const updated = [...prev];
-            updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.detail || data.error || "Backend error." };
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: errMsg };
             return updated;
           });
           return;

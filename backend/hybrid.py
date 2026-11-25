@@ -196,9 +196,10 @@ def run_sql(
                 "error": f"SQL execution failed: {e}"}
     conn.close()
 
+    clean_df = df.astype(object).where(pd.notnull(df), None)
     return {
         "sql": sql,
-        "result": df.to_dict(orient="records"),
+        "result": clean_df.to_dict(orient="records"),
         "columns": list(df.columns),
         "row_count": len(df),
         "error": None,
