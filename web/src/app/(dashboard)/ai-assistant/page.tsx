@@ -43,7 +43,7 @@ export default function AIAssistantPage() {
   const [model, setModel] = useState("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsError, setModelsError] = useState("");
-  const [mode, setMode] = useState<Mode>("chat");
+  const [mode, setMode] = useState<Mode>("ask");
   const [tableCount, setTableCount] = useState(0);
   const [docsRole, setDocsRole] = useState("student");
   const messagesEndRef = useRef<HTMLDivElement>(null);

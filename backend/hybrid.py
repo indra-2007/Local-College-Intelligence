@@ -22,17 +22,13 @@ Concurrency:
 import re
 import json
 import time
-import threading
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 
 import backend.llm_service as llm_service
 from backend.config import DB_PATH, CHROMA_DIR, CHROMA_COLLECTION, EMBED_MODEL
 from backend.rag import _get_embedder, _get_collection, VALID_ROLES
-
-# ── GPU serialization ─────────────────────────────────────────────────────────
-# Only one LLM call runs at a time — prevents GPU VRAM contention.
-_llm_semaphore = threading.Semaphore(1)
 
 # ── Route labels ──────────────────────────────────────────────────────────────
 SQL_ONLY = "SQL_ONLY"
@@ -112,17 +108,16 @@ def route_query(question: str, tables: list[str], model: str | None = None) -> s
         'JSON response (only the JSON, nothing else):'
     )
 
-    with _llm_semaphore:
-        try:
-            result = llm_service.generate(
-                prompt=prompt,
-                model=model,
-                temperature=0.0,
-                num_predict=30,
-                num_ctx=512,
-            )
-        except Exception:
-            return RAG_ONLY
+    try:
+        result = llm_service.generate(
+            prompt=prompt,
+            model=model,
+            temperature=0.0,
+            num_predict=30,
+            num_ctx=512,
+        )
+    except Exception:
+        return RAG_ONLY
 
     raw = result.get("response", "").strip()
     # Try to extract JSON even if model adds surrounding text
@@ -172,17 +167,16 @@ def run_sql(
         "SQL:"
     )
 
-    with _llm_semaphore:
-        try:
-            result = llm_service.generate(
-                prompt=prompt,
-                model=model,
-                temperature=0.0,
-                num_predict=120,
-                num_ctx=2048,
-            )
-        except RuntimeError as e:
-            return {"sql": None, "result": [], "columns": [], "row_count": 0, "error": str(e)}
+    try:
+        result = llm_service.generate(
+            prompt=prompt,
+            model=model,
+            temperature=0.0,
+            num_predict=120,
+            num_ctx=2048,
+        )
+    except RuntimeError as e:
+        return {"sql": None, "result": [], "columns": [], "row_count": 0, "error": str(e)}
 
     raw_sql = result.get("response", "").strip()
     sql = _extract_sql(raw_sql)
@@ -314,17 +308,16 @@ def synthesize(
         "Answer:"
     )
 
-    with _llm_semaphore:
-        try:
-            result = llm_service.generate(
-                prompt=prompt,
-                model=model,
-                temperature=0.1,
-                num_predict=350,
-                num_ctx=3072,
-            )
-        except RuntimeError as e:
-            return f"[LLM error: {e}]"
+    try:
+        result = llm_service.generate(
+            prompt=prompt,
+            model=model,
+            temperature=0.1,
+            num_predict=350,
+            num_ctx=3072,
+        )
+    except RuntimeError as e:
+        return f"[LLM error: {e}]"
 
     return result.get("response", "").strip() or "I could not find this in the available data."
 
@@ -362,14 +355,19 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
     # ── 1. Route classification ───────────────────────────────────────────────
     route = route_query(question, tables, model)
 
-    # ── 2. Run sub-tasks (SQL and/or RAG) ────────────────────────────────────
+    # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None
     rag_data: dict | None = None
 
-    if route in (SQL_ONLY, HYBRID):
+    if route == HYBRID:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            sql_future = pool.submit(run_sql, question, role, tables, schema, model)
+            rag_future = pool.submit(run_rag, question, role)
+            sql_data = sql_future.result()
+            rag_data = rag_future.result()
+    elif route == SQL_ONLY:
         sql_data = run_sql(question, role, tables, schema, model)
-
-    if route in (RAG_ONLY, HYBRID):
+    elif route == RAG_ONLY:
         rag_data = run_rag(question, role)
 
     # ── 3. Synthesize final answer ────────────────────────────────────────────
