@@ -6,11 +6,9 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   const links = [
-    { path: "/", icon: "grid_view", label: "Dashboard" },
     { path: "/ai-assistant", icon: "chat_bubble", label: "AI Assistant" },
     { path: "/upload", icon: "folder_open", label: "Upload & Documents" },
     { path: "/chat-history", icon: "history", label: "Chat History" },
-    { path: "/regulations", icon: "menu_book", label: "Academic Regulations" },
   ];
 
   return (
