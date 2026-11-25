@@ -1,338 +1,283 @@
-# 🎓 C-GPT — Local College Intelligence
+# C-GPT — Local College Intelligence
 
-> An offline, privacy-first AI dashboard for institutional use.  
-> No internet. No API keys. No data leaves your network.
-
----
-
-## 🧠 What Is This?
-
-**C-GPT** is an AI-powered institutional dashboard that lets you:
-
-- Upload student data (CSV/Excel — attendance, marks, etc.)
-- Ask questions in plain English → get SQL-powered answers from your data
-- Chat with a local LLM (Ollama) for general academic queries
-- Search institutional documents (regulations, circulars) using RAG
-- Role-based access: Student, Faculty, HOD, Admin
+> **Privacy-first, air-gapped institutional AI for RVCE.**
+> No internet. No external API keys. No data leaves your network.
 
 ---
 
-## 🖥️ Deployment Architecture
+## What Is This?
 
-| Machine | Role | What Runs |
-|---|---|---|
-| **Frontend Laptop** | Dev / Client | Next.js 16 frontend (browser UI) |
-| **Backend Server** | High-GPU server | FastAPI + Ollama LLM + SQLite + ChromaDB |
+**C-GPT** is an offline AI assistant built for college institutions. It runs entirely on local hardware (a single GPU server + any client laptop) and lets faculty, HODs, and students ask natural-language questions about:
 
-The two machines communicate over an **SSH tunnel** on the local network.
+- **Student records** — attendance, CIE marks, CO/PO scores, CGPA, grades
+- **Institutional documents** — regulations, handbooks, syllabi, circulars, fee policies
+- **Both at once** — e.g. *"Which students are below the minimum attendance threshold per RVCE regulations?"*
 
----
-
-## 🏗️ Tech Stack
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| Frontend | **Next.js 16** (TypeScript/React) | Browser UI |
-| Styling | **Tailwind CSS v4** | Design system |
-| Backend API | **FastAPI** (Python) | REST API, file handling, SQL |
-| Database | **SQLite** | Structured CSV/Excel data |
-| Vector DB | **ChromaDB** | RAG document embeddings |
-| Embeddings | **sentence-transformers** (MiniLM) | 384-dim question vectors |
-| LLM | **Ollama** (`qwen2.5-coder:7b`) | Local AI — SQL + RAG generation |
-| Auth | **PBKDF2** password hashing (SQLite) | User accounts + sessions |
-| Tunnel | **SSH port forwarding** | Frontend ↔ Backend secure link |
+The system automatically classifies each query and routes it through the right pipeline — SQL, RAG, or a hybrid of both — then fuses the results into one grounded answer.
 
 ---
 
-## 📐 Architecture Diagram
+## Architecture
 
 ```
-BROWSER (localhost:3000)
-        │
-        ▼
-NEXT.JS FRONTEND (Frontend Laptop)
-   ├── /api/chat        ──SSH tunnel──▶  <SERVER_IP>:11434  (Ollama — Windows)
-   ├── /api/ask-sql     ──SSH tunnel──▶  <SERVER_IP>:8000   (FastAPI — WSL/Linux)
-   ├── /api/ask-docs    ──SSH tunnel──▶  <SERVER_IP>:8000
-   ├── /api/upload      ──SSH tunnel──▶  <SERVER_IP>:8000
-   └── /api/tables      ──SSH tunnel──▶  <SERVER_IP>:8000
-                                              │
-                                    ┌─────────┴──────────┐
-                                    │    FASTAPI :8000    │
-                                    │  - Upload CSV       │
-                                    │  - Run SQL          │
-                                    │  - RAG pipeline     │
-                                    │  - Auth / sessions  │
-                                    └──────┬──────────────┘
-                                           │
-                            ┌──────────────┼──────────────┐
-                            ▼              ▼              ▼
-                        SQLite         ChromaDB         Ollama
-                   institutional.db   (RAG index)   qwen2.5-coder:7b
+Client Laptop (any browser)
+  └── Next.js 16 frontend  ──SSH tunnel──►  GPU Server (Syed's machine)
+                                                ├── FastAPI backend  (port 8000)
+                                                ├── Ollama LLM       (port 11434)
+                                                ├── SQLite           (data/institutional.db)
+                                                └── ChromaDB         (data/chroma/)
 ```
 
----
-
-## ✅ Feature List
-
-### 🤖 AI Assistant (3 modes)
-| Mode | How It Works |
+| Layer | Technology |
 |---|---|
-| **Chat** | Streams directly from Ollama (like local ChatGPT) |
-| **Ask Data** | Question → LLM generates SQL → Python runs it on SQLite → Answer |
-| **Ask Docs** | Question → embedded → ChromaDB similarity search → LLM answers from chunks |
-
-### 📁 Upload & Documents
-- Drag & drop CSV / XLSX / XLS / JSON
-- Auto-detects and skips banner/title rows
-- Percentage strings auto-converted to numbers (`"85%"` → `85.0`)
-- Preview + table management (view, delete)
-
-### 🔐 Auth & Roles
-- Login with role: `student`, `faculty`, `hod`, `admin`
-- Role-based RAG access control (embedded in ChromaDB metadata)
-- PBKDF2 hashed passwords, stored in `data/app_storage.db`
-
-### 💬 Chat History
-- All sessions auto-saved to browser localStorage
-- Browse, expand, delete past conversations
-
-### 📜 Ask Docs (RAG)
-- Semantic search across institutional documents (regulations, circulars, syllabus)
-- Returns answer + source citations `[filename > section]`
-- Fully offline — embeddings computed on CPU
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS v4 |
+| Backend | FastAPI, Python, Uvicorn |
+| LLM runtime | Ollama (`qwen2.5-coder:7b`, CUDA) |
+| Structured data | SQLite + pandas |
+| Vector search | ChromaDB + `all-MiniLM-L6-v2` (sentence-transformers, CPU) |
+| Auth | SQLite-backed session tokens |
 
 ---
 
-## 🗂️ Project Structure
+## Features
+
+### Unified Hybrid Query Pipeline (`/ask`)
+The flagship `Ask` mode automatically classifies every query and runs the right engine:
+
+| Route | When used | What runs |
+|---|---|---|
+| `SQL_ONLY` | Pure data question (counts, averages, top-N) | LLM → SQL → SQLite |
+| `RAG_ONLY` | Policy / handbook / regulation question | Embed → ChromaDB → LLM |
+| `HYBRID` | Needs both numbers AND policy context | SQL + RAG in parallel → fused synthesis |
+
+Execution transparency is surfaced in the UI: route badge, generated SQL (expandable), result table, and cited document sources.
+
+### Ask Data (SQL Pipeline)
+- LLM generates a SQLite `SELECT` from natural language
+- Safety gate: destructive SQL (`DROP`, `DELETE`, `UPDATE`, etc.) is rejected before execution
+- Python — not the LLM — executes the query
+- Percentage math rules enforced: `*_max_N_` column denominators, SQLite float-division guards
+
+### Ask Docs (RAG Pipeline)
+- Documents are chunked, embedded, and stored in ChromaDB at ingest time
+- **Pre-retrieval RBAC**: role filter runs inside the vector query — restricted chunks never reach the LLM
+- Source-diversity re-ranking: candidate pool of `2×k` with a cap of 2 chunks per source file so one large handbook never crowds out specific policy docs
+- Sources cited inline in the answer as `[filename › section]`
+
+### Chat Mode
+- Streams directly from Ollama via Server-Sent Events
+- Stop button mid-generation
+- Full session history persisted in localStorage
+
+### GPU Monitoring
+- Live `/gpu` header widget (polls nvidia-smi every 5 s)
+- Shows GPU utilisation %, VRAM used/total, and temperature
+
+### Upload & Documents
+- CSV / XLSX / JSON → auto-cleaned and loaded into SQLite (percentage strings → floats, title-row detection)
+- Markdown / TXT → ingested into ChromaDB and immediately queryable
+- SQL scripts (`.sql`) → executed directly against the database
+
+### Role-based Access Control
+Roles: `student`, `faculty`, `hod`, `admin`
+
+- Student role restricts SQL to aggregate/summary data (no full student lists)
+- ChromaDB metadata filter enforces per-role document visibility at the vector-search layer
+- Role is currently passed from the UI (prototype); in production it must come from a verified session token
+
+---
+
+## Repository Structure
 
 ```
-project-root/
 ├── backend/
-│   ├── main.py           ← FastAPI app — all routes
-│   ├── config.py         ← Reads .env (Ollama URL, model, DB paths)
-│   ├── llm_service.py    ← Centralized LLM calls (thread-safe model switching)
-│   ├── auth_storage.py   ← User auth + chat persistence (SQLite)
-│   └── rag.py            ← RAG pipeline (embed → ChromaDB → Ollama)
+│   ├── main.py           # FastAPI app, all HTTP routes, startup warmup
+│   ├── hybrid.py         # Unified hybrid pipeline: router + SQL + RAG + synthesis
+│   ├── rag.py            # RAG pipeline: embed → ChromaDB → Ollama
+│   ├── llm_service.py    # Centralised Ollama client, GPU semaphore, model management
+│   ├── config.py         # Env-var config, WSL gateway auto-detection
+│   ├── ingest.py         # Document chunking and ChromaDB indexing
+│   ├── load_structured.py# Auto-load structured_data/ CSVs into SQLite at startup
+│   ├── auth_storage.py   # SQLite-backed user auth and session tokens
+│   └── evaluate.py       # RAG evaluation utilities
 │
-├── web/
-│   └── src/app/
-│       ├── (auth)/login/         ← Login page
-│       ├── (dashboard)/
-│       │   ├── ai-assistant/     ← Chat + Ask Data + Ask Docs
-│       │   ├── upload/           ← File upload + table manager
-│       │   ├── chat-history/     ← Saved sessions
-│       │   └── regulations/      ← Academic regulations page
-│       └── api/
-│           ├── chat/             ← Streams from Ollama
-│           ├── ask-sql/          ← Proxies to FastAPI /ask-sql
-│           ├── ask-docs/         ← Proxies to FastAPI /ask-docs
-│           ├── upload/           ← Proxies to FastAPI /upload
-│           ├── tables/           ← Proxies to FastAPI /tables
-│           └── models/           ← Lists Ollama installed models
+├── structured_data/      # CSV/XLSX files auto-loaded into SQLite
+│   ├── attendance.csv
+│   ├── cie_marks.csv
+│   └── student_details.csv
 │
 ├── unstructured_data/
-│   └── synthetic/        ← Markdown regulation docs for RAG indexing
+│   └── synthetic/        # 26 Markdown institutional documents (RAG corpus)
 │
-├── data/                 ← Auto-created at runtime (gitignored)
-│   ├── institutional.db  ← SQLite (uploaded CSV data)
-│   ├── app_storage.db    ← SQLite (user accounts, chat logs)
-│   └── chroma/           ← ChromaDB vector index
+├── data/                 # Runtime data (gitignored)
+│   ├── institutional.db  # SQLite database
+│   └── chroma/           # ChromaDB vector store
 │
-├── .env                  ← Local config (gitignored — see .env.example)
-└── requirements.txt      ← Python dependencies
+├── web/                  # Next.js 16 frontend
+│   └── src/
+│       ├── app/
+│       │   ├── (dashboard)/
+│       │   │   ├── ai-assistant/   # Main AI Assistant UI (Chat, Ask Data, Ask Docs, Ask)
+│       │   │   ├── upload/         # Upload & Documents page
+│       │   │   ├── chat-history/   # Chat session history
+│       │   │   ├── admin/          # Admin panel
+│       │   │   └── hod/            # HOD panel
+│       │   └── api/                # Next.js proxy routes → FastAPI
+│       └── components/
+│           ├── Header.tsx           # GPU widget + Local AI Online badge
+│           └── Sidebar.tsx          # Navigation
+│
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## ⚙️ Configuration (`.env`)
+## Quick Start
 
-Copy `.env.example` to `.env` and edit:
+### Prerequisites
 
-```env
-# Ollama endpoint — where the LLM is running
-# Same machine (Windows native):
-OLLAMA_BASE_URL=http://127.0.0.1:11434
+- **GPU server**: NVIDIA GPU, Ubuntu / WSL2, Python 3.11+, [Ollama](https://ollama.com) installed
+- **Client**: Node.js 20+, pnpm
 
-# Ollama running on Windows host, FastAPI in WSL:
-# OLLAMA_BASE_URL=http://<WSL_GATEWAY_IP>:11434
+### 1. Clone
 
-# Default generation model (must be pulled in Ollama first)
-DEFAULT_MODEL=qwen2.5-coder:7b
-
-# Optional overrides (defaults shown)
-# DB_PATH=data/institutional.db
-# CHROMA_DIR=data/chroma
-# EMBED_MODEL=all-MiniLM-L6-v2
-```
-
----
-
-## 🚀 Daily Startup (SSH Tunnel Setup)
-
-### On the **Backend Server**
-
-**1. Start Ollama** (if not already running as a service):
 ```bash
-ollama serve
+git clone https://github.com/indra-2007/Local-College-Intelligence.git
+cd Local-College-Intelligence
 ```
 
-**2. Start FastAPI** (in WSL or Linux terminal):
+### 2. Backend (on the GPU server)
+
 ```bash
-cd /path/to/project
-source venv/bin/activate
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
-```
-
----
-
-### On the **Frontend Laptop** (Windows PowerShell)
-
-**3. Open SSH tunnel** — keep this window open the entire session:
-```powershell
-# Replace <SERVER_IP> with the server's Wi-Fi IP (run ipconfig on server to find it)
-# Replace <WSL_IP> with WSL's internal IP (run: wsl hostname -I  on server)
-# Replace <SSH_USER> with the local Windows account on the server
-
-ssh -L 8000:<WSL_IP>:8000 -L 11435:127.0.0.1:11434 -N <SSH_USER>@<SERVER_IP>
-```
-
-> **Why two targets?**  
-> - Port `8000` → WSL IP directly (FastAPI runs inside WSL/Linux)  
-> - Port `11435` → server localhost (Ollama runs natively on Windows)
-
-**4. Run the frontend** in a new PowerShell tab:
-```powershell
-cd /path/to/project/web
-npm run dev
-```
-
-**5. Open browser:**
-```
-http://localhost:3000
-```
-
----
-
-## 📦 One-Time Setup
-
-### Backend (Linux / WSL)
-```bash
-cd /path/to/project
-python3 -m venv venv
-source venv/bin/activate
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Pull the LLM model
+# Pull the generation model
 ollama pull qwen2.5-coder:7b
 
-# Index documents for RAG (run once, re-run if docs change)
+# Configure environment
+cp .env.example .env
+# Edit .env — set OLLAMA_BASE_URL if needed (see comments in .env.example)
+
+# Build the RAG index from unstructured_data/synthetic/
 python backend/ingest.py
+
+# Start the backend
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Frontend (Windows)
-```powershell
-cd /path/to/project/web
-npm install
+The startup sequence auto-loads structured CSVs into SQLite, pre-warms the embedding model and ChromaDB, and loads the LLM into GPU VRAM — first query has near-zero cold-start latency.
+
+### 3. Frontend (on the client machine)
+
+```bash
+cd web
+pnpm install
+pnpm dev        # starts on port 3000
 ```
+
+### 4. SSH tunnel (connecting client to GPU server)
+
+If the frontend and backend are on different machines on the same network:
+
+```bash
+# Run on the CLIENT machine
+ssh -L 8000:<SERVER_LAN_IP>:8000 -N <user>@<SERVER_LAN_IP>
+```
+
+The Next.js API proxy routes forward all `/api/*` calls to the backend over this tunnel. No browser-to-backend direct connection is needed.
 
 ---
 
-## 🔌 API Reference
+## Environment Variables
+
+Copy `.env.example` to `.env` in the project root and set:
+
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_BASE_URL` | auto-detected | Ollama API base URL |
+| `DEFAULT_MODEL` | `qwen2.5-coder:7b` | Model name (must already be pulled) |
+| `DB_PATH` | `data/institutional.db` | SQLite database path |
+| `CHROMA_DIR` | `data/chroma` | ChromaDB persistence directory |
+| `EMBED_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformer embedding model |
+
+> **WSL users**: `config.py` auto-detects the Windows host gateway IP from `ip route` and `/etc/resolv.conf`. You can override with `OLLAMA_BASE_URL=http://<GATEWAY_IP>:11434`.
+
+---
+
+## API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Server health check |
-| `GET` | `/tables` | List all SQLite tables with row counts |
-| `POST` | `/upload` | Upload CSV/Excel → save to SQLite |
-| `POST` | `/ask-sql` | Natural language → SQL → result |
-| `POST` | `/ask-docs` | RAG: question → document answer + sources |
-| `GET` | `/tables/{name}` | Preview rows of a table |
-| `DELETE` | `/tables/{name}` | Delete a table |
-| `GET` | `/models` | List Ollama installed models |
-| `GET` | `/models/active` | Get current active model |
-| `POST` | `/models/active` | Switch active model at runtime |
-| `POST` | `/auth/login` | Login → JWT session |
-| `GET` | `/chats` | Get chat history for user |
-| `POST` | `/chats` | Save a chat session |
+| `GET` | `/health` | Backend health, tables, active model |
+| `GET` | `/gpu` | Live GPU stats (nvidia-smi) |
+| `GET` | `/models` | Installed Ollama models |
+| `POST` | `/models/active` | Switch active generation model |
+| `GET` | `/tables` | SQLite table list with row counts |
+| `POST` | `/upload` | Upload CSV/XLSX/MD/SQL file |
+| `GET` | `/preview/{table}` | Preview first N rows of a table |
+| `DELETE` | `/tables/{table}` | Drop table and remove source file |
+| `POST` | `/ask` | **Unified hybrid query** (SQL + RAG + synthesis) |
+| `POST` | `/ask-sql` | SQL-only pipeline |
+| `POST` | `/ask-docs` | RAG-only pipeline |
+| `POST` | `/auth/login` | Authenticate and get session token |
+| `GET` | `/auth/me` | Get current authenticated user |
+| `GET` | `/chats` | List chat sessions (authenticated) |
+| `POST` | `/chats` | Save/update a chat session |
+
+Full interactive docs available at `/docs` when the backend is running.
 
 ---
 
-## 🔐 Default Credentials (Development Only)
+## Data Included (Synthetic / Demo)
 
-| Role | Email | Password |
-|---|---|---|
-| Student | `student@rvce.edu.in` | `Student@123` |
-| Faculty | `faculty@rvce.edu.in` | `Faculty@123` |
-| HOD | `hod@rvce.edu.in` | `Hod@123` |
-| Admin | `admin@rvce.edu.in` | `Admin@123` |
+### Structured (SQLite)
+| File | Contents |
+|---|---|
+| `attendance.csv` | Course-wise attendance records |
+| `cie_marks.csv` | CIE marks with CO/PO mappings (Q1–Q8, EL) |
+| `student_details.csv` | 200 students across CS, CI, CY, CD programs |
 
-> Change these before any real deployment.
+### Unstructured (RAG corpus — 26 documents)
+Regulations (2022 & 2024 schemes), CSE CO-PO mapping, circulars, student clubs, registration, events calendar, library resources, placement cell, hostel/mess, scholarships, academic calendar, attendance grading policy, EL team rules, fee circulars, academic handbooks (assessment, registration, clubs & discipline, student services), NRI/PG fees, placement report 2025–26, CI semester scheme, Advanced AI/ML syllabus, AE course syllabi.
 
----
-
-## 🔧 Troubleshooting
-
-| Symptom | Cause | Fix |
-|---|---|---|
-| `fetch failed` on Ask Data / Upload | FastAPI not reachable via tunnel | Check SSH tunnel is open and FastAPI is running on server |
-| `Empty reply from server` on port 8000 | Tunnel points to Windows, FastAPI is in WSL | Use `<WSL_IP>:8000` in SSH `-L` flag instead of `localhost:8000` |
-| Chat works, Ask Data doesn't | FastAPI down; chat goes direct to Ollama | Start uvicorn on server |
-| RAG slow on first query | sentence-transformers downloading model | Wait — downloads once, cached permanently after |
-| `ModuleNotFoundError: No module named 'uvicorn'` | Running outside venv | Activate venv first: `source venv/bin/activate` |
-| Attendance query returns wrong rows | Attendance stored as text `"85%"` not number | Re-upload CSV — percentage cleaning is now automatic |
-| `Permission denied` on SSH | Wrong username or Microsoft account | Use a local Windows account, not a Microsoft-linked one |
+> All student data is **synthetic** and generated for demonstration purposes only.
 
 ---
 
-## 🛡️ Security Notes
+## Concurrency & GPU Safety
 
-- LLM **never executes code** — only generates SQL text
-- SQL safety blocklist: `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `TRUNCATE`, `CREATE`, `ATTACH`
-- Only `SELECT` queries run against the database
-- RAG role filter runs **inside ChromaDB** — restricted chunks never reach the LLM
-- All traffic between machines is encrypted via SSH tunnel
-- `.env` and `data/` are gitignored — no credentials or student data in version control
+- A `threading.Semaphore(1)` in `llm_service.py` serializes all non-streaming LLM calls — concurrent requests queue rather than contend for GPU VRAM.
+- Streaming chat calls bypass the semaphore (each stream holds the GPU for its own duration).
+- `keep_alive: -1` keeps model weights resident in VRAM between requests.
+- HYBRID queries run SQL and RAG retrieval in parallel (`ThreadPoolExecutor`) before the single serialized synthesis call.
 
 ---
 
-## 📊 Data Upload Format
+## Security Notes (Prototype)
 
-Your CSV/Excel must have **column headers in Row 1**:
-
-✅ Correct:
-```
-USN, Student_Name, Section, Attendance
-1RV25CI001, Aarav Sharma, A, 85
-```
-
-❌ Wrong (causes unnamed columns):
-```
-Student Master & Course Details     ← DELETE THIS
-                                    ← DELETE BLANK ROW
-USN, Student_Name, ...              ← This should be Row 1
-```
+- Role is currently accepted from the request body for ease of development. **In production, derive role from a verified server-side session token — never trust the client.**
+- SQL safety gate rejects any non-`SELECT` statement from LLM output.
+- ChromaDB pre-retrieval RBAC filter runs inside the vector query; restricted chunks are never retrieved.
+- All Ollama API calls are local — no external model API is used.
 
 ---
 
-## 🔄 RAG Pipeline Explained
+## Contributing
 
-```
-Your question
-     │
-     ▼ sentence-transformers (CPU, ~2s)
-384-dim vector
-     │
-     ▼ ChromaDB similarity search (role-filtered)
-Top-4 matching document chunks
-     │
-     ▼ Prompt: "Answer ONLY from the context below..."
-     │
-     ▼ Ollama (qwen2.5-coder:7b, GPU)
-Answer text + [source > section] citations
-```
+1. Fork the repo and create a feature branch from `main`
+2. Backend changes go in `backend/`; frontend changes in `web/`
+3. Run `python -m py_compile backend/*.py` and `cd web && npx tsc --noEmit` before submitting a PR
+4. The project uses conventional commits (`feat:`, `fix:`, `perf:`, `chore:`)
 
 ---
 
-*Built for RVCE — Institutional AI Dashboard Project*  
-*Stack: Next.js 16 · FastAPI · SQLite · ChromaDB · Ollama · SSH Tunnel*
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+*Built for RVCE, Bengaluru — local-first, privacy-preserving institutional AI.*
