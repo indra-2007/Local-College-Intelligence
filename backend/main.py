@@ -443,8 +443,10 @@ def ask_sql(req: AskRequest):
     prompt = (
         "/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
-        "Rules: use ONLY column names from the schema above; pick the table whose columns match the question; "
+        "Rules: use ONLY column names from the schema above; pick the single best table whose columns match the question; "
+        "prefer filtering directly on that table's own columns instead of subqueries; "
         "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
+        "CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0); ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values (e.g. (q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0), NEVER / 15 * 100 or / 100; "
         "no markdown, no comments; end with semicolon.\n\n"
         f"Question: {req.prompt}\n"
         "SQL:"

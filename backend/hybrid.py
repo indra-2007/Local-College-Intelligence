@@ -187,8 +187,14 @@ def run_sql(
         f"/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
         f"{role_note}"
-        "Rules: use ONLY column names from the schema above; numeric columns compare as numbers; "
-        "no markdown, no comments; end with semicolon.\n\n"
+        "Rules:\n"
+        "- Use ONLY column names from the schema above; pick the single best table whose columns match the question.\n"
+        "- Prefer filtering directly on that table's own columns (e.g. WHERE branch = 'CSE') instead of subqueries to other tables.\n"
+        "- Numeric columns compare as numbers.\n"
+        "- CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0!). "
+        "ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values "
+        "(e.g. AVG((q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0)), NEVER write / 15 * 100 or / 100.\n"
+        "- No markdown, no comments; end with semicolon.\n\n"
         f"Question: {question}\n"
         "SQL:"
     )
@@ -238,17 +244,20 @@ def run_sql(
 def run_rag(question: str, role: str, k: int = 6) -> dict:
     """
     Retrieve top-k role-filtered chunks from ChromaDB.
-    Returns { chunks: [(text, source, section, distance)], sources }.
+    Fetches a wider candidate pool (max(k*2, 12)) and applies keyword-overlap
+    re-ranking + per-source diversity (max 2 chunks per document) so one large
+    handbook does not crowd out specific policy/CO-PO documents.
     Does NOT call the LLM — that happens in the synthesis step.
     """
     embedder = _get_embedder()
     q_vec = embedder.encode([question], normalize_embeddings=True).tolist()
+    fetch_k = max(k * 2, 12)
 
     try:
         col = _get_collection()
         results = col.query(
             query_embeddings=q_vec,
-            n_results=k,
+            n_results=fetch_k,
             where={f"role_{role}": True},
         )
     except Exception as e:
@@ -258,10 +267,37 @@ def run_rag(question: str, role: str, k: int = 6) -> dict:
     metas  = results["metadatas"][0]
     dists  = results["distances"][0]
 
+    # Re-rank candidates: vector distance minus a small bonus for keyword hits in source/section/text
+    q_tokens = {w for w in re.findall(r"[a-z0-9]{2,}", question.lower()) if w not in {
+        "what", "is", "the", "of", "by", "on", "and", "to", "in", "for", "are", "how",
+        "with", "from", "that", "this", "which", "students", "student", "compared",
+    }}
+
+    scored = []
+    for doc, m, d in zip(docs, metas, dists):
+        hay = f"{m.get('source', '')} {m.get('section', '')} {doc[:300]}".lower()
+        hits = sum(1 for tok in q_tokens if tok in hay)
+        adj_score = d - min(hits * 0.03, 0.25)
+        scored.append((adj_score, doc, m, d))
+
+    scored.sort(key=lambda x: x[0])
+
+    # Keep at most 2 chunks per source file so diverse documents surface
+    picked = []
+    per_source: dict[str, int] = {}
+    for _, doc, m, d in scored:
+        src = m["source"]
+        if per_source.get(src, 0) >= 2:
+            continue
+        per_source[src] = per_source.get(src, 0) + 1
+        picked.append((doc, m, d))
+        if len(picked) >= k:
+            break
+
     chunks = [(doc, m["source"], m["section"], round(d, 4))
-              for doc, m, d in zip(docs, metas, dists)]
+              for doc, m, d in picked]
     sources = [{"source": m["source"], "section": m["section"], "distance": round(d, 4)}
-               for m, d in zip(metas, dists)]
+               for _, m, d in picked]
 
     return {"chunks": chunks, "sources": sources, "error": None}
 
