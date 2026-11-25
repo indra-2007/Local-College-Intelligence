@@ -85,24 +85,37 @@ def _extract_sql(raw: str) -> str:
 
 # ─── Step 1: Query Router ────────────────────────────────────────────────────
 
-def route_query(question: str, tables: list[str], model: str | None = None) -> str:
+def _compact_schema_hint(schema: str) -> str:
+    """Extract compact `table(col1, col2, ...)` lines for the router prompt."""
+    lines = []
+    for block in schema.split("\n\n"):
+        first = block.splitlines()[0] if block else ""
+        m = re.match(r"\[([^\]]+)\]\s+Columns:\s*(.+)", first)
+        if m:
+            tname = m.group(1)
+            cols = [c.strip().split()[0] for c in m.group(2).split(",")]
+            lines.append(f"{tname}({', '.join(cols[:15])}{'...' if len(cols) > 15 else ''})")
+    return "; ".join(lines) if lines else "none"
+
+
+def route_query(question: str, tables: list[str], model: str | None = None, schema: str = "") -> str:
     """
     Use the LLM to classify the query as SQL_ONLY, RAG_ONLY, or HYBRID.
     Returns one of the three constants.
     Falls back to RAG_ONLY on any failure.
     """
-    sql_hint = ", ".join(tables) if tables else "none"
+    sql_hint = _compact_schema_hint(schema) if schema else (", ".join(tables) if tables else "none")
     prompt = (
         "/no_think Classify the user question for an institutional AI system.\n\n"
-        f"Available SQL tables: {sql_hint}\n"
-        "Available document types: regulations, handbooks, circulars, syllabi, attendance policies, fee policies.\n\n"
+        f"Available SQL tables & columns: {sql_hint}\n"
+        "Available document types: regulations, handbooks, circulars, syllabi, CO-PO mappings, attendance policies, fee policies.\n\n"
         "Return ONLY valid JSON with one key 'route' whose value is exactly one of: "
         '"SQL_ONLY", "RAG_ONLY", "HYBRID".\n\n'
         "Rules:\n"
-        '- SQL_ONLY: question asks for specific numbers/records from tables (e.g. attendance %, marks, student list).\n'
-        '- RAG_ONLY: question asks about policies, rules, procedures, regulations, handbooks, syllabi.\n'
-        '- HYBRID: question needs BOTH hard numbers AND policy context '
-        '(e.g. "who is below the minimum attendance threshold?", "which students fail the regulation cutoff?").\n\n'
+        '- HYBRID: question asks for BOTH student/course numbers/averages/records from SQL tables AND a policy/target/rule/definition from documents '
+        '(e.g. "who is below the minimum attendance threshold?", "average CIE marks compared to CO1 target in document", "which students fail the regulation cutoff?").\n'
+        '- SQL_ONLY: question ONLY asks for numbers, counts, averages, or records from SQL tables with no policy/document comparison.\n'
+        '- RAG_ONLY: question ONLY asks about policies, rules, procedures, regulations, handbooks, or syllabi with no student/table data.\n\n'
         f"Question: {question}\n\n"
         'JSON response (only the JSON, nothing else):'
     )
@@ -113,7 +126,7 @@ def route_query(question: str, tables: list[str], model: str | None = None) -> s
             model=model,
             temperature=0.0,
             num_predict=30,
-            num_ctx=512,
+            num_ctx=1024,
         )
     except Exception:
         return RAG_ONLY
@@ -353,7 +366,7 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
     tables, schema = _get_schema()
 
     # ── 1. Route classification ───────────────────────────────────────────────
-    route = route_query(question, tables, model)
+    route = route_query(question, tables, model, schema=schema)
 
     # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None
