@@ -123,7 +123,7 @@ export default function AIAssistantPage() {
         const res = await fetch("/api/ask-docs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || "qwen3-4b" }),
+          body: JSON.stringify({ question: userMessage, role: docsRole, model: model || undefined }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -210,7 +210,7 @@ export default function AIAssistantPage() {
         const res = await fetch("/api/ask-sql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: userMessage, model: model || "qwen3:4b" }),
+          body: JSON.stringify({ prompt: userMessage, model: model || undefined }),
         });
         const data = await res.json();
 

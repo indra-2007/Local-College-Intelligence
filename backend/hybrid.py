@@ -15,12 +15,11 @@ RBAC:
   - LLM never executes SQL — Python does.
 
 Concurrency:
-  A module-level threading.Semaphore(1) serializes all LLM calls so concurrent
-  requests do not contend for GPU VRAM.
+  LLM calls are serialized via _llm_semaphore in backend/llm_service.py so
+  concurrent requests do not contend for GPU VRAM.
 """
 
 import re
-import json
 import time
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
