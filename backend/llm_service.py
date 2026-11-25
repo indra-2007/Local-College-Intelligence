@@ -89,15 +89,20 @@ def generate(
     """
     resolved_model = model or get_active_model()
 
+    default_options = {
+        "num_gpu": 99,  # Force all layers offloaded to NVIDIA GPU VRAM
+    }
+    if options:
+        default_options.update(options)
+
     payload = {
         "model": resolved_model,
         "prompt": prompt,
         "stream": stream,
         "think": False,
         "keep_alive": -1,   # keep model loaded in GPU VRAM indefinitely
+        "options": default_options,
     }
-    if options:
-        payload["options"] = options
 
     if stream:
         try:
