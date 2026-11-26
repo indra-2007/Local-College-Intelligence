@@ -206,6 +206,7 @@ def run_sql(
         "- If the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), "
         "reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns — "
         "do NOT switch tables or add unnecessary JOINs unless the user asks for a different course/table.\n"
+        "- When asked 'in more than one course', 'more than N times', or 'at least N', aggregate/filter in SQL using GROUP BY student_name, usn HAVING COUNT(*) > 1 (or COUNT(DISTINCT course_name) > 1) so SQL returns ONLY the qualifying students and their counts/courses.\n"
         "- Never write a JOIN without a valid ON condition.\n"
         "- No markdown, no comments; end with semicolon.\n\n"
         f"{history_block}"
@@ -335,14 +336,20 @@ def synthesize(
     if sql_data and sql_data.get("result") and not sql_data.get("error"):
         rows = sql_data["result"]
         cols = sql_data["columns"]
-        # Render up to 50 rows as a compact table string
+        # Render up to 120 rows (bounded by ~6000 chars) so late-alphabet students (e.g. V-Z) are not cut off
         header = " | ".join(cols)
         divider = "-" * len(header)
-        rows_str = "\n".join(
-            " | ".join(str(row.get(c, "")) for c in cols)
-            for row in rows[:50]
-        )
-        suffix = f"\n... ({len(rows) - 50} more rows)" if len(rows) > 50 else ""
+        rendered_rows = []
+        total_chars = 0
+        for row in rows[:120]:
+            line = " | ".join(str(row.get(c, "")) for c in cols)
+            if total_chars + len(line) > 6000:
+                break
+            rendered_rows.append(line)
+            total_chars += len(line) + 1
+        rows_str = "\n".join(rendered_rows)
+        omitted = len(rows) - len(rendered_rows)
+        suffix = f"\n... ({omitted} more rows)" if omitted > 0 else ""
         sections.append(
             f"[STRUCTURED DATA — SQL result ({len(rows)} rows)]\n"
             f"Query: {sql_data['sql']}\n\n"
@@ -385,6 +392,7 @@ def synthesize(
         "- If one source (SQL or Documents) returned 0 rows or is unavailable, STILL answer using the other source that IS available and explicitly mention the 0-row / unavailable part.\n"
         "- Only say 'I could not find this in the available data.' if NEITHER source contains relevant information.\n"
         "- Never invent numbers, dates, or rules.\n"
+        "- When listing students from the SQL result, include EVERY qualifying student from the SQL table without skipping anyone.\n"
         f"- {route_instruction}\n"
         "- Be concise: 3–8 sentences or a short list.\n"
         f"{combined_context}\n\n"
