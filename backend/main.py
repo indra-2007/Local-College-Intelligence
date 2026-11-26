@@ -493,7 +493,7 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
         "prefer filtering directly on that table's own columns instead of subqueries; "
         "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
         "CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0); ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values (e.g. (q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0), NEVER / 15 * 100 or / 100; "
-        "if the question is a follow-up (e.g. 'their names', 'those students'), resolve references from the previous conversation in this chat; "
+        "if the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns; never write a JOIN without an ON clause; "
         "no markdown, no comments; end with semicolon.\n\n"
         f"{history_block}"
         f"Question: {req.prompt}\n"

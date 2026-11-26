@@ -110,14 +110,20 @@ export function useConversation(audience: string, userId: string, initialMode?: 
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-    // Per-chat context: only prior completed turns from the current thread (empty on New chat)
+    // Per-chat context: only prior successful turns from the current thread (empty on New chat).
+    // Put [SQL: ...] first so follow-up SQL generation always sees the exact table & WHERE filter.
     const priorTurns = (thread?.messages ?? [])
-      .filter((m) => !m.status && m.content.trim())
+      .filter(
+        (m) =>
+          !m.status &&
+          m.content.trim() &&
+          !m.content.startsWith("I could not find this in the available")
+      )
       .slice(-6)
       .map((m) => ({
         role: m.role,
         content: m.sqlMeta?.sql
-          ? `${m.content.slice(0, 350)}\n[SQL: ${m.sqlMeta.sql}]`
+          ? `[SQL: ${m.sqlMeta.sql}]\n${m.content.slice(0, 300)}`
           : m.content.slice(0, 400),
       }));
 

@@ -152,7 +152,7 @@ def format_history(history: list[dict] | None, max_turns: int = 6) -> str:
         if role not in ("user", "assistant") or not content:
             continue
         label = "User" if role == "user" else "Assistant"
-        lines.append(f"{label}: {content[:400]}")
+        lines.append(f"{label}: {content[:700]}")
     if not lines:
         return ""
     return "Previous conversation in this chat:\n" + "\n".join(lines) + "\n\n"
