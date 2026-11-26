@@ -99,7 +99,12 @@ _DOC_SIGNALS = (
 )
 
 
-def route_query(question: str, tables: list[str], model: str | None = None) -> str:
+def route_query(
+    question: str,
+    tables: list[str],
+    model: str | None = None,
+    history: list[dict] | None = None,
+) -> str:
     """
     Use the LLM to classify the query as SQL_ONLY, RAG_ONLY, or HYBRID.
     Returns one of the three constants.
@@ -108,6 +113,7 @@ def route_query(question: str, tables: list[str], model: str | None = None) -> s
     Falls back to RAG_ONLY on any failure.
     """
     sql_hint = ", ".join(tables) if tables else "none"
+    history_block = llm_service.format_history(history, max_turns=4)
     prompt = (
         "/no_think Classify the user question for an institutional AI system.\n\n"
         f"Available SQL tables: {sql_hint} (contain student records, attendance %, CIE marks Q1-Q8, EL scores, CO/PO tags, CGPA).\n"
@@ -120,6 +126,7 @@ def route_query(question: str, tables: list[str], model: str | None = None) -> s
         '- HYBRID: question needs BOTH database numbers/averages/student scores AND policy/document/target context '
         '(e.g. "who is below the minimum attendance threshold?", "what is the average CIE score on CO1/PO1 compared to the CO1 attainment target?").\n'
         'If a question asks for averages, scores, or student lists AND compares them to a policy, threshold, target, or document, choose "HYBRID".\n\n'
+        f"{history_block}"
         f"Question: {question}\n\n"
         'JSON response (only the JSON, nothing else):'
     )
@@ -165,6 +172,7 @@ def run_sql(
     tables: list[str],
     schema: str,
     model: str | None = None,
+    history: list[dict] | None = None,
 ) -> dict:
     """
     Generate and execute a SELECT query.
@@ -183,6 +191,7 @@ def run_sql(
             "never return a full list of all students' private records.\n"
         )
 
+    history_block = llm_service.format_history(history, max_turns=4)
     prompt = (
         f"/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
@@ -194,7 +203,9 @@ def run_sql(
         "- CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0!). "
         "ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values "
         "(e.g. AVG((q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0)), NEVER write / 15 * 100 or / 100.\n"
+        "- If the question is a follow-up (e.g. 'their names', 'those students', 'for AIML instead'), resolve references using the previous conversation in this chat.\n"
         "- No markdown, no comments; end with semicolon.\n\n"
+        f"{history_block}"
         f"Question: {question}\n"
         "SQL:"
     )
@@ -311,6 +322,7 @@ def synthesize(
     sql_data: dict | None,
     rag_data: dict | None,
     model: str | None = None,
+    history: list[dict] | None = None,
 ) -> str:
     """
     Build a grounded synthesis prompt fusing SQL rows + RAG chunks and call the LLM.
@@ -356,9 +368,10 @@ def synthesize(
         ),
     }.get(route, "Answer from the provided context.")
 
+    history_block = llm_service.format_history(history, max_turns=6)
     prompt = (
         "/no_think You are an institutional AI assistant for RVCE, Bengaluru.\n"
-        "Answer ONLY from the context provided below. Do not use any external knowledge.\n\n"
+        "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite document sources as [filename › section] when you use them.\n"
         "- If context does not contain a clear answer, say exactly: "
@@ -367,6 +380,7 @@ def synthesize(
         f"- {route_instruction}\n"
         "- Be concise: 3–8 sentences or a short list.\n"
         f"{combined_context}\n\n"
+        f"{history_block}"
         f"Question ({role}): {question}\n\n"
         "Answer:"
     )
@@ -387,7 +401,12 @@ def synthesize(
 
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
-def ask(question: str, role: str, model: str | None = None) -> dict:
+def ask(
+    question: str,
+    role: str,
+    model: str | None = None,
+    history: list[dict] | None = None,
+) -> dict:
     """
     Unified hybrid query entry point.
 
@@ -395,6 +414,7 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
         question: User's natural-language question.
         role:     One of 'student', 'faculty', 'hod', 'admin'.
         model:    Generation model (None = active model from llm_service).
+        history:  Recent turns from the current chat session only.
 
 
     Returns:
@@ -417,7 +437,8 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
     tables, schema = _get_schema()
 
     # ── 1. Route classification ───────────────────────────────────────────────
-    route = route_query(question, tables, model)
+    route = route_query(question, tables, model, history=history)
+    rag_query = llm_service.contextualize_search_query(question, history)
 
     # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None
@@ -425,17 +446,17 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
 
     if route == HYBRID:
         with ThreadPoolExecutor(max_workers=2) as pool:
-            sql_future = pool.submit(run_sql, question, role, tables, schema, model)
-            rag_future = pool.submit(run_rag, question, role)
+            sql_future = pool.submit(run_sql, question, role, tables, schema, model, history)
+            rag_future = pool.submit(run_rag, rag_query, role)
             sql_data = sql_future.result()
             rag_data = rag_future.result()
     elif route == SQL_ONLY:
-        sql_data = run_sql(question, role, tables, schema, model)
+        sql_data = run_sql(question, role, tables, schema, model, history)
     elif route == RAG_ONLY:
-        rag_data = run_rag(question, role)
+        rag_data = run_rag(rag_query, role)
 
     # ── 3. Synthesize final answer ────────────────────────────────────────────
-    answer = synthesize(question, role, route, sql_data, rag_data, model)
+    answer = synthesize(question, role, route, sql_data, rag_data, model, history=history)
 
     time_taken_ms = round((time.time() - t0) * 1000)
 

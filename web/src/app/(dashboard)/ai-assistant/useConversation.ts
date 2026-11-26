@@ -110,6 +110,16 @@ export function useConversation(audience: string, userId: string, initialMode?: 
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+    // Per-chat context: only prior completed turns from the current thread (empty on New chat)
+    const priorTurns = (thread?.messages ?? [])
+      .filter((m) => !m.status && m.content.trim())
+      .slice(-6)
+      .map((m) => ({
+        role: m.role,
+        content: m.sqlMeta?.sql
+          ? `${m.content.slice(0, 350)}\n[SQL: ${m.sqlMeta.sql}]`
+          : m.content.slice(0, 400),
+      }));
 
     try {
       if (mode === "chat") {
@@ -146,7 +156,7 @@ export function useConversation(audience: string, userId: string, initialMode?: 
       } else if (mode === "data") {
         const data = await readJson<SqlReply>(
           "/api/ask-sql",
-          post({ prompt, model: model || undefined })
+          post({ prompt, model: model || undefined, history: priorTurns })
         );
         const rows = data.result ?? [];
         const columns = data.columns ?? Object.keys(rows[0] ?? {});
@@ -169,7 +179,7 @@ export function useConversation(audience: string, userId: string, initialMode?: 
       } else if (mode === "ask") {
         const data = await readJson<AskReply>(
           "/api/ask",
-          post({ question: prompt, role: audience, model: model || undefined })
+          post({ question: prompt, role: audience, model: model || undefined, history: priorTurns })
         );
         const rows = data.sql_result ?? [];
         const hasSql =
@@ -206,7 +216,7 @@ export function useConversation(audience: string, userId: string, initialMode?: 
       } else {
         const data = await readJson<DocsReply>(
           "/api/ask-docs",
-          post({ question: prompt, role: audience, model: model || undefined })
+          post({ question: prompt, role: audience, model: model || undefined, history: priorTurns })
         );
         reply = {
           ...reply,

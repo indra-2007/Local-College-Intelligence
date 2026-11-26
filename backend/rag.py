@@ -55,6 +55,7 @@ def answer_question(
     role: str,
     model: str | None = None,
     k: int = 4,
+    history: list[dict] | None = None,
 ) -> dict:
     """
     Retrieve relevant chunks from ChromaDB (role-filtered) and generate an answer via Ollama.
@@ -81,9 +82,10 @@ def answer_question(
     if role not in VALID_ROLES:
         raise ValueError(f"Invalid role '{role}'. Must be one of {VALID_ROLES}.")
 
-    # ── 2. Embed question ─────────────────────────────────────────────────────
+    # ── 2. Embed question (contextualized for follow-ups in this chat) ────────
+    search_q = llm_service.contextualize_search_query(question, history)
     embedder = _get_embedder()
-    q_vec = embedder.encode([question], normalize_embeddings=True).tolist()
+    q_vec = embedder.encode([search_q], normalize_embeddings=True).tolist()
 
     # ── 3. Query ChromaDB with role filter ────────────────────────────────────
     # The where-filter runs INSIDE Chroma before any documents are returned.
@@ -126,10 +128,11 @@ def answer_question(
     context = "\n\n---\n\n".join(context_parts)
 
     # ── 6. Build prompt ───────────────────────────────────────────────────────
+    history_block = llm_service.format_history(history, max_turns=6)
     prompt = (
         "/no_think "
         "You are an institutional AI assistant for RVCE, Bengaluru. "
-        "Answer ONLY from the context provided below. Do not use any external knowledge.\n\n"
+        "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite your sources as [filename > section] when you use information from a chunk.\n"
         "- If the context does not contain a clear answer, say exactly: "
@@ -139,6 +142,7 @@ def answer_question(
         "state both and name each scheme explicitly.\n"
         "- Be concise: 3–6 sentences is ideal unless the question needs a list.\n\n"
         f"Context:\n{context}\n\n"
+        f"{history_block}"
         f"Question ({role}): {question}\n\n"
         "Answer:"
     )
