@@ -9,14 +9,52 @@ import re
 import io
 import requests
 import pandas as pd
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Header
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-from backend.config import DB_PATH, DEFAULT_MODEL, OLLAMA_GENERATE_URL
+from backend.config import DB_PATH, DEFAULT_MODEL, OLLAMA_GENERATE_URL, STRUCTURED_DIR, DOCS_DIR as UNSTRUCTURED_DIR
 import backend.llm_service as llm_service
+
+_ROLE_RANK = {"student": 0, "faculty": 1, "hod": 2, "admin": 3}
+
+
+def _optional_current_user(authorization: Optional[str]):
+    """Validate Bearer token when supplied; return None if omitted."""
+    if not authorization:
+        return None
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
+    token = authorization.split("Bearer ", 1)[1].strip()
+    user = get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired or invalid token.")
+    return user
+
+
+def _enforce_audience(requested_role: str, user: Optional[dict]) -> str:
+    role = requested_role.strip().lower()
+    if role not in _ROLE_RANK:
+        raise HTTPException(status_code=400, detail=f"Invalid role '{requested_role}'.")
+    if user is not None:
+        user_role = str(user.get("role", "student")).lower()
+        if _ROLE_RANK[role] > _ROLE_RANK.get(user_role, 0):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Forbidden: '{user_role}' session cannot query '{role}' audience.",
+            )
+    return role
+
+
+def _require_staff(user: Optional[dict]):
+    if user is not None and str(user.get("role", "student")).lower() == "student":
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: students cannot upload, replace, or delete campus datasets.",
+        )
 
 app = FastAPI(title="Institutional AI Backend", version="2.0.0")
 
@@ -260,21 +298,18 @@ def get_tables():
     return {"tables": result}
 
 
-# ─── Directories ─────────────────────────────────────────────────────────────
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-STRUCTURED_DIR = os.path.join(ROOT_DIR, "structured_data")
-UNSTRUCTURED_DIR = os.path.join(ROOT_DIR, "unstructured_data", "synthetic")
-
-
 # ─── Upload ───────────────────────────────────────────────────────────────────
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), authorization: Optional[str] = Header(default=None)):
     """
     Receive a file from the frontend:
-    - If .md / .txt: Save to unstructured_data/synthetic/ and rebuild RAG ChromaDB index.
-    - If .csv / .xlsx / .xls / .json: Save to structured_data/ and load into SQLite table.
+    - If .md / .txt: Save to DOCS_DIR and rebuild RAG ChromaDB index.
+    - If .csv / .xlsx / .xls / .json / .sql: Save to STRUCTURED_DIR and load into SQLite.
     """
+    user = _optional_current_user(authorization)
+    _require_staff(user)
+
     filename = file.filename or "upload"
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
@@ -290,7 +325,6 @@ async def upload_file(file: UploadFile = File(...)):
             f.write(raw_bytes)
 
         # Trigger RAG ingest
-        indexing_error = None
         try:
             import backend.ingest as ingest
             ingest.build_index()
@@ -298,16 +332,17 @@ async def upload_file(file: UploadFile = File(...)):
             import backend.rag as rag
             rag._chroma_col = None
         except Exception as e:
-            indexing_error = str(e)
+            raise HTTPException(
+                status_code=500,
+                detail=f"File saved to {clean_filename}, but document indexing failed: {e}",
+            )
 
         return {
             "status": "ok",
             "type": "unstructured",
             "filename": clean_filename,
             "saved_path": f"unstructured_data/synthetic/{clean_filename}",
-            "message": f"Saved to unstructured_data/synthetic/{clean_filename}" + (
-                f" and indexed into ChromaDB." if not indexing_error else f", but indexing note: {indexing_error}"
-            ),
+            "message": f"Saved to unstructured_data/synthetic/{clean_filename} and indexed into ChromaDB.",
         }
 
     # ── 2. Structured data for SQL (.csv, .xlsx, .xls, .json, .sql) ──
@@ -427,7 +462,7 @@ class AskRequest(BaseModel):
 
 
 @app.post("/ask-sql")
-def ask_sql(req: AskRequest):
+def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)):
     """
     Full pipeline:
     1. Build schema-aware few-shot prompt with clearly separated table blocks
@@ -436,13 +471,22 @@ def ask_sql(req: AskRequest):
     4. Python (not LLM) executes SELECT against SQLite
     5. Return results + generated SQL for transparency
     """
+    user = _optional_current_user(authorization)
     tables, schema = get_schema()
     if not tables:
         raise HTTPException(status_code=400, detail="No data uploaded yet. Upload a CSV first.")
 
+    role_note = ""
+    if user and str(user.get("role", "")).lower() == "student":
+        role_note = (
+            "IMPORTANT: This query is for a student — only return aggregate or summary data, "
+            "never return a full list of all students' private records.\n"
+        )
+
     prompt = (
         "/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
+        f"{role_note}"
         "Rules: use ONLY column names from the schema above; pick the single best table whose columns match the question; "
         "prefer filtering directly on that table's own columns instead of subqueries; "
         "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
@@ -517,8 +561,10 @@ def preview_table(table_name: str, limit: int = 10):
 
 
 @app.delete("/tables/{table_name}")
-def delete_table(table_name: str):
+def delete_table(table_name: str, authorization: Optional[str] = Header(default=None)):
     """Drop a table from SQLite and remove corresponding file from structured_data/."""
+    user = _optional_current_user(authorization)
+    _require_staff(user)
     if table_name not in list_tables():
         raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found.")
     safe_name = re.sub(r"[^a-z0-9_]", "", table_name)
@@ -540,6 +586,57 @@ def delete_table(table_name: str):
     return {"status": "deleted", "table": table_name}
 
 
+# ─── Streaming Chat ──────────────────────────────────────────────────────────
+
+class ChatTurn(BaseModel):
+    role: str
+    content: str
+
+
+class ChatStreamRequest(BaseModel):
+    prompt: str | None = None
+    messages: list[ChatTurn] | None = None
+    model: str | None = None
+
+
+@app.post("/chat")
+def chat_stream(req: ChatStreamRequest, authorization: Optional[str] = Header(default=None)):
+    """Stream UTF-8 text from Ollama via centralized llm_service (GPU-serialized)."""
+    _optional_current_user(authorization)
+    turns = [t.model_dump() for t in req.messages] if req.messages else None
+    if not turns and (not req.prompt or not req.prompt.strip()):
+        raise HTTPException(status_code=400, detail="Enter a message first.")
+
+    gen = llm_service.stream_chat(
+        prompt=req.prompt,
+        messages=turns,
+        model=req.model,
+        temperature=0.7,
+        top_p=0.9,
+        top_k=40,
+        repeat_penalty=1.1,
+        num_predict=1024,
+    )
+    # Prime the generator up to the first chunk or connection error before sending 200
+    try:
+        first = next(gen)
+    except StopIteration:
+        first = b""
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    def _stream():
+        if first:
+            yield first
+        yield from gen
+
+    return StreamingResponse(
+        _stream(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
+
+
 # ─── Hybrid Unified Query ────────────────────────────────────────────────────
 
 class AskRequest2(BaseModel):
@@ -549,7 +646,7 @@ class AskRequest2(BaseModel):
 
 
 @app.post("/ask")
-def ask(req: AskRequest2):
+def ask(req: AskRequest2, authorization: Optional[str] = Header(default=None)):
     """
     Unified hybrid query endpoint (C-GPT).
 
@@ -557,11 +654,14 @@ def ask(req: AskRequest2):
     the nature of the question. Runs sub-tasks, fuses results, and returns a
     single grounded answer with full execution transparency.
     """
+    user = _optional_current_user(authorization)
+    effective_role = _enforce_audience(req.role, user)
+
     from backend.hybrid import ask as hybrid_ask
     try:
         result = hybrid_ask(
             question=req.question,
-            role=req.role,
+            role=effective_role,
             model=req.model,
         )
     except ValueError as e:
@@ -580,28 +680,18 @@ class AskDocsRequest(BaseModel):
 
 
 @app.post("/ask-docs")
-def ask_docs(req: AskDocsRequest):
+def ask_docs(req: AskDocsRequest, authorization: Optional[str] = Header(default=None)):
     """
     RAG pipeline for unstructured institutional documents stored in ChromaDB.
-
-    Pipeline:
-      1. Validate role (server-side; see security note below).
-      2. Embed question with sentence-transformers (CPU, local).
-      3. Query ChromaDB with role filter — restricted chunks NEVER leave the DB.
-      4. Pass retrieved context + question to Ollama; return answer + sources.
-
-    SECURITY NOTE (PROTOTYPE):
-      Role is currently taken directly from the request body for ease of development.
-      In production, role MUST be derived from a verified server-side session token
-      (e.g. JWT signed by the auth service). Never trust the client or the LLM prompt
-      for access-control decisions.
     """
+    user = _optional_current_user(authorization)
+    effective_role = _enforce_audience(req.role, user)
     from backend.rag import answer_question  # lazy import so main.py starts fast
 
     try:
         result = answer_question(
             question=req.question,
-            role=req.role,
+            role=effective_role,
             model=req.model,  # None = use active model (resolved inside rag.py)
         )
     except ValueError as e:

@@ -1,13 +1,5 @@
-import { NextResponse } from "next/server";
+import { campusRequest } from "@/lib/campus-api";
 
-const FASTAPI = "http://127.0.0.1:8000";
-
-export async function GET() {
-  try {
-    const res = await fetch(`${FASTAPI}/tables`);
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch {
-    return NextResponse.json({ tables: {} }, { status: 503 });
-  }
+export async function GET(request: Request) {
+  return campusRequest("/tables", { signal: request.signal }, { requireAuth: true });
 }

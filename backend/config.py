@@ -84,19 +84,22 @@ def _resolve_ollama_base_url() -> str:
 # ── Ollama ────────────────────────────────────────────────────────────────────
 OLLAMA_BASE_URL: str = _resolve_ollama_base_url()
 OLLAMA_GENERATE_URL: str = f"{OLLAMA_BASE_URL}/api/generate"
+OLLAMA_CHAT_URL: str = f"{OLLAMA_BASE_URL}/api/chat"
 OLLAMA_TAGS_URL: str = f"{OLLAMA_BASE_URL}/api/tags"
 
 # ── Default generation model ──────────────────────────────────────────────────
 # Must be a model already pulled in Ollama. Never auto-downloaded.
 DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "qwen2.5-coder:7b")
 
-# ── Database ──────────────────────────────────────────────────────────────────
-DB_PATH: str = os.path.join(_root, "data", "institutional.db")
+# ── Database & Data Directories ───────────────────────────────────────────────
+DB_PATH: str = os.getenv("DB_PATH", os.path.join(_root, "data", "institutional.db"))
+STRUCTURED_DIR: str = os.getenv("STRUCTURED_DIR", os.path.join(_root, "structured_data"))
+DOCS_DIR: str = os.getenv("DOCS_DIR", os.path.join(_root, "unstructured_data", "synthetic"))
 
 # ── ChromaDB ──────────────────────────────────────────────────────────────────
-CHROMA_DIR: str = os.path.join(_root, "data", "chroma")
-CHROMA_COLLECTION: str = "institutional_docs"
+CHROMA_DIR: str = os.getenv("CHROMA_DIR", os.path.join(_root, "data", "chroma"))
+CHROMA_COLLECTION: str = os.getenv("CHROMA_COLLECTION", "institutional_docs")
 
 # ── Embedding model (CPU, local — NEVER changes with generation model) ─────────
-EMBED_MODEL: str = "all-MiniLM-L6-v2"
+EMBED_MODEL: str = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 

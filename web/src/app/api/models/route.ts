@@ -1,25 +1,37 @@
 import { NextResponse } from "next/server";
+import { FASTAPI_URL, OLLAMA_URL } from "@/lib/campus-api";
 
 export async function GET() {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch("http://127.0.0.1:11435/api/tags", { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return NextResponse.json({ models: data.models });
-  } catch {
-    // Also try the FastAPI /models endpoint as fallback
+  const sources = [`${FASTAPI_URL}/models`, `${OLLAMA_URL}/api/tags`];
+  for (const url of sources) {
     try {
-      const res2 = await fetch("http://127.0.0.1:8000/models", { signal: AbortSignal.timeout(5000) });
-      if (res2.ok) {
-        const data2 = await res2.json();
-        return NextResponse.json({ models: data2.models?.map((m: string) => ({ name: m })) ?? [] });
-      }
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!Array.isArray(data.models)) continue;
+      const models = data.models.flatMap((entry: unknown) => {
+        if (typeof entry === "string" && entry.trim()) return [{ name: entry }];
+        if (
+          entry &&
+          typeof entry === "object" &&
+          "name" in entry &&
+          typeof entry.name === "string" &&
+          entry.name.trim()
+        ) {
+          return [entry];
+        }
+        return [];
+      });
+      if (!data.models.length || models.length) return NextResponse.json({ models });
     } catch {
-      // both failed
+      /* Try the other local model catalog. */
     }
-    return NextResponse.json({ error: "Cannot reach Ollama or FastAPI. Check SSH tunnel." }, { status: 503 });
   }
+  return NextResponse.json(
+    { error: "The local model service is unavailable." },
+    { status: 503 }
+  );
 }

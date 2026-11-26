@@ -1,0 +1,155 @@
+/* All coordinates below refer to the uncropped 16:9 photograph.
+   Keeping light, limb and lens transforms on this plate preserves registration on phones. */
+.scene {
+  --still: url("/entry/porch.jpg");
+  --tilt: -3.6deg;
+  --soft-focus: clamp(20px, 2.35vw, 38px);
+  --overscan: 1.26;
+  --door-x: 50.3%;
+  --door-y: 57.5%;
+  --push-scale: 11;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #070605;
+  pointer-events: none;
+}
+
+.cover {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 177.77778vh);
+  width: max(100%, 177.77778dvh);
+  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -50%);
+}
+
+.push, .focus, .drift, .plate, .dark { position: absolute; inset: 0; }
+.push, .focus { transform-origin: var(--door-x) var(--door-y); }
+
+.push {
+  transform: scale(1);
+  transition: transform var(--door-time) cubic-bezier(.62,.03,.84,.62);
+}
+
+.focus {
+  transform: rotate(0deg) scale(1);
+  filter: blur(0);
+  transition: transform var(--reveal-time) cubic-bezier(.29,.01,.15,1),
+              filter var(--reveal-time) cubic-bezier(.33,.02,.24,1);
+}
+
+.scene[data-phase="login"] .focus {
+  transform: rotate(var(--tilt)) scale(var(--overscan));
+  filter: blur(var(--soft-focus));
+}
+
+.plate {
+  container-type: size;
+  background: var(--still) center / 100% 100% no-repeat;
+}
+
+.drift { transform: scale(1.008); }
+.scene[data-motion="on"] .drift { animation: drift 17s ease-in-out infinite alternate; }
+@keyframes drift {
+  from { transform: scale(1.01) translate(-.14%, .09%); }
+  to   { transform: scale(1.014) translate(.15%, -.14%); }
+}
+
+/* Dim the light already in the picture, including a little of its spill on the siding. */
+.lamp {
+  position: absolute;
+  width: 11.6%;
+  height: 22%;
+  top: 44.8%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse closest-side, #311a07 3%, rgba(49, 26, 7, .74) 31%, transparent 100%);
+  opacity: .09;
+}
+.leftLamp { left: 38.45%; }
+.rightLamp { left: 61.35%; }
+.scene[data-motion="on"] .leftLamp { animation: leftLamp 8.9s ease-in-out -2.1s infinite; }
+.scene[data-motion="on"] .rightLamp { animation: rightLamp 12.7s ease-in-out -4.9s infinite; }
+@keyframes leftLamp {
+  0%, 26%, 36%, 73%, 87%, 100% { opacity: .05; }
+  30% { opacity: .27; }
+  33% { opacity: .12; }
+  78% { opacity: .19; }
+}
+@keyframes rightLamp {
+  0%, 18%, 29%, 57%, 72%, 100% { opacity: .08; }
+  23% { opacity: .21; }
+  62% { opacity: .30; }
+  67% { opacity: .14; }
+}
+
+/* Small, feathered crops resample the same pixels as the plate. Each crop moves
+   a fraction of its own width. No cutout or invented background is required. */
+.patch {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  width: calc(var(--w) * 1%);
+  height: calc(var(--h) * 1%);
+  background-image: var(--still);
+  background-repeat: no-repeat;
+  background-size: 100cqw 100cqh;
+  background-position: calc(var(--x) * -1cqw) calc(var(--y) * -1cqh);
+  mask-image: radial-gradient(ellipse closest-side, black 39%, rgba(0, 0, 0, .85) 59%, transparent 100%);
+}
+.ankle { --x: 45.15; --y: 21.9; --w: 3.45; --h: 10.9; transform-origin: 59% 100%; }
+.fingers { --x: 57.9; --y: 51.25; --w: 4.75; --h: 7.4; transform-origin: 0% 45%; }
+.scene[data-motion="on"] .ankle { animation: ankle 11.8s ease-in-out -6.1s infinite; }
+.scene[data-motion="on"] .fingers { animation: fingers 9.3s ease-in-out -2.4s infinite; }
+@keyframes ankle {
+  0%, 48%, 57%, 100% { transform: rotate(0deg); }
+  51% { transform: rotate(-.85deg); }
+  53.5% { transform: rotate(.35deg); }
+}
+@keyframes fingers {
+  0%, 17%, 26%, 69%, 80%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-.8%) rotate(-.49deg); }
+  23% { transform: translateY(.3%) rotate(.23deg); }
+  74% { transform: translateY(-.6%) rotate(-.36deg); }
+}
+
+.dark {
+  background: #000;
+  opacity: 0;
+  transition: opacity calc(var(--door-time) * .58) cubic-bezier(.38,0,.35,1) calc(var(--door-time) * .36);
+}
+.scene[data-phase="entering"] .push {
+  transform: translate(-.3%, -7.5%) scale(var(--push-scale));
+}
+.scene[data-phase="entering"] .dark { opacity: 1; }
+.scene[data-motion="off"] .focus,
+.scene[data-motion="off"] .push,
+.scene[data-motion="off"] .dark { transition: none; }
+.scene[data-motion="off"] .patch { display: none; }
+
+.ember {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #edba82;
+  box-shadow: 0 0 5px 1px #c16c39, 0 0 11px 2px rgba(163, 73, 30, .42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .ember { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene *, .scene *::before, .scene *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

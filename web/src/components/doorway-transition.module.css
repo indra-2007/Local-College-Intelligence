@@ -1,0 +1,21 @@
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #000;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.curtain[data-arrived] {
+  animation: uncover 720ms cubic-bezier(.47, 0, .28, 1) both;
+}
+
+@keyframes uncover {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain[data-arrived] { animation-duration: 1ms; }
+}

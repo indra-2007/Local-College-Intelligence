@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep the development badge out of the final black frame during local demos.
+  devIndicators: false,
   images: {
     remotePatterns: [
       {
