@@ -459,6 +459,7 @@ def list_documents():
 class AskRequest(BaseModel):
     prompt: str
     model: str | None = None  # None = use active model
+    history: list[dict] | None = None
 
 
 @app.post("/ask-sql")
@@ -483,6 +484,7 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
             "never return a full list of all students' private records.\n"
         )
 
+    history_block = llm_service.format_history(req.history, max_turns=4)
     prompt = (
         "/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
@@ -491,7 +493,9 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
         "prefer filtering directly on that table's own columns instead of subqueries; "
         "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
         "CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0); ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values (e.g. (q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0), NEVER / 15 * 100 or / 100; "
+        "if the question is a follow-up (e.g. 'their names', 'those students'), resolve references from the previous conversation in this chat; "
         "no markdown, no comments; end with semicolon.\n\n"
+        f"{history_block}"
         f"Question: {req.prompt}\n"
         "SQL:"
     )
@@ -643,6 +647,7 @@ class AskRequest2(BaseModel):
     question: str
     role: str          # "student" | "faculty" | "hod" | "admin"
     model: str | None = None
+    history: list[dict] | None = None
 
 
 @app.post("/ask")
@@ -663,6 +668,7 @@ def ask(req: AskRequest2, authorization: Optional[str] = Header(default=None)):
             question=req.question,
             role=effective_role,
             model=req.model,
+            history=req.history,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -677,6 +683,7 @@ class AskDocsRequest(BaseModel):
     question: str
     role: str  # "student" | "faculty" | "hod" | "admin"
     model: str | None = None  # None = use active model
+    history: list[dict] | None = None
 
 
 @app.post("/ask-docs")
@@ -693,6 +700,7 @@ def ask_docs(req: AskDocsRequest, authorization: Optional[str] = Header(default=
             question=req.question,
             role=effective_role,
             model=req.model,  # None = use active model (resolved inside rag.py)
+            history=req.history,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

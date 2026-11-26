@@ -141,6 +141,44 @@ def generate(
         return resp.json()
 
 
+def format_history(history: list[dict] | None, max_turns: int = 6) -> str:
+    """Format recent turns from the current chat session into a compact prompt block."""
+    if not history:
+        return ""
+    lines = []
+    for turn in history[-max_turns:]:
+        role = str(turn.get("role", "")).strip().lower()
+        content = str(turn.get("content", "")).strip()
+        if role not in ("user", "assistant") or not content:
+            continue
+        label = "User" if role == "user" else "Assistant"
+        lines.append(f"{label}: {content[:400]}")
+    if not lines:
+        return ""
+    return "Previous conversation in this chat:\n" + "\n".join(lines) + "\n\n"
+
+
+def contextualize_search_query(question: str, history: list[dict] | None) -> str:
+    """
+    If the current question is a follow-up referencing earlier turns in this chat,
+    combine it with the most recent user turn so vector retrieval stays on topic.
+    """
+    if not history:
+        return question
+    last_user = next(
+        (str(t.get("content", "")).strip() for t in reversed(history)
+         if str(t.get("role", "")).lower() == "user" and str(t.get("content", "")).strip()),
+        "",
+    )
+    if not last_user:
+        return question
+    q_words = question.lower().split()
+    followup_markers = {"it", "them", "those", "that", "these", "this", "above", "same", "they", "he", "she", "their", "her", "his"}
+    if len(q_words) <= 8 or any(w.strip("?.,!") in followup_markers for w in q_words):
+        return f"{last_user} {question}"
+    return question
+
+
 def stream_chat(
     prompt: str | None = None,
     messages: list[dict] | None = None,
