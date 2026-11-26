@@ -203,7 +203,10 @@ def run_sql(
         "- CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0!). "
         "ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values "
         "(e.g. AVG((q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0)), NEVER write / 15 * 100 or / 100.\n"
-        "- If the question is a follow-up (e.g. 'their names', 'those students', 'for AIML instead'), resolve references using the previous conversation in this chat.\n"
+        "- If the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), "
+        "reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns — "
+        "do NOT switch tables or add unnecessary JOINs unless the user asks for a different course/table.\n"
+        "- Never write a JOIN without a valid ON condition.\n"
         "- No markdown, no comments; end with semicolon.\n\n"
         f"{history_block}"
         f"Question: {question}\n"
@@ -215,8 +218,8 @@ def run_sql(
             prompt=prompt,
             model=model,
             temperature=0.0,
-            num_predict=120,
-            num_ctx=2048,
+            num_predict=180,
+            num_ctx=4096,
         )
     except RuntimeError as e:
         return {"sql": None, "result": [], "columns": [], "row_count": 0, "error": str(e)}
@@ -347,6 +350,11 @@ def synthesize(
         )
     elif sql_data and sql_data.get("error"):
         sections.append(f"[STRUCTURED DATA — unavailable: {sql_data['error']}]")
+    elif sql_data and sql_data.get("sql"):
+        sections.append(
+            f"[STRUCTURED DATA — SQL query returned 0 matching rows]\n"
+            f"Query: {sql_data['sql']}"
+        )
 
     if rag_data and rag_data.get("chunks"):
         doc_parts = []
@@ -374,8 +382,8 @@ def synthesize(
         "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite document sources as [filename › section] when you use them.\n"
-        "- If context does not contain a clear answer, say exactly: "
-        "'I could not find this in the available data.'\n"
+        "- If one source (SQL or Documents) returned 0 rows or is unavailable, STILL answer using the other source that IS available and explicitly mention the 0-row / unavailable part.\n"
+        "- Only say 'I could not find this in the available data.' if NEITHER source contains relevant information.\n"
         "- Never invent numbers, dates, or rules.\n"
         f"- {route_instruction}\n"
         "- Be concise: 3–8 sentences or a short list.\n"
