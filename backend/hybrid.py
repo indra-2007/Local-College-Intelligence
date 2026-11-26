@@ -215,8 +215,8 @@ def run_sql(
             prompt=prompt,
             model=model,
             temperature=0.0,
-            num_predict=120,
-            num_ctx=2048,
+            num_predict=180,
+            num_ctx=4096,
         )
     except RuntimeError as e:
         return {"sql": None, "result": [], "columns": [], "row_count": 0, "error": str(e)}
@@ -347,6 +347,11 @@ def synthesize(
         )
     elif sql_data and sql_data.get("error"):
         sections.append(f"[STRUCTURED DATA — unavailable: {sql_data['error']}]")
+    elif sql_data and sql_data.get("sql"):
+        sections.append(
+            f"[STRUCTURED DATA — SQL query returned 0 matching rows]\n"
+            f"Query: {sql_data['sql']}"
+        )
 
     if rag_data and rag_data.get("chunks"):
         doc_parts = []
@@ -374,8 +379,8 @@ def synthesize(
         "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite document sources as [filename › section] when you use them.\n"
-        "- If context does not contain a clear answer, say exactly: "
-        "'I could not find this in the available data.'\n"
+        "- If one source (SQL or Documents) returned 0 rows or is unavailable, STILL answer using the other source that IS available and explicitly mention the 0-row / unavailable part.\n"
+        "- Only say 'I could not find this in the available data.' if NEITHER source contains relevant information.\n"
         "- Never invent numbers, dates, or rules.\n"
         f"- {route_instruction}\n"
         "- Be concise: 3–8 sentences or a short list.\n"
