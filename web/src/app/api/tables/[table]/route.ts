@@ -1,15 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-
-const FASTAPI = "http://127.0.0.1:8000";
+import { NextResponse } from "next/server";
+import { campusRequest } from "@/lib/campus-api";
+import { currentSession } from "@/lib/current-session";
 
 export async function DELETE(
-  _req: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ table: string }> }
 ) {
+  const session = await currentSession();
+  if (!session) {
+    return NextResponse.json(
+      { detail: "Session expired or not signed in. Please sign in again." },
+      { status: 401 }
+    );
+  }
+  if (session.user.role === "student") {
+    return NextResponse.json(
+      { detail: "Forbidden: students cannot delete campus tables." },
+      { status: 403 }
+    );
+  }
+
   const { table } = await params;
-  const res = await fetch(`${FASTAPI}/tables/${encodeURIComponent(table)}`, {
-    method: "DELETE",
-  });
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  return campusRequest(
+    `/tables/${encodeURIComponent(table)}`,
+    { method: "DELETE", signal: request.signal },
+    { requireAuth: true }
+  );
 }

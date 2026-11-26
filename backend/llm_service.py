@@ -9,10 +9,12 @@ Thread-safety: _active_model is protected by a threading.Lock so concurrent
 requests cannot race when switching models.
 """
 
+import json
 import threading
 import requests
 from backend.config import (
     OLLAMA_GENERATE_URL,
+    OLLAMA_CHAT_URL,
     OLLAMA_TAGS_URL,
     DEFAULT_MODEL,
 )
@@ -137,4 +139,61 @@ def generate(
             raise RuntimeError(f"Ollama request failed: {e}")
 
         return resp.json()
+
+
+def stream_chat(
+    prompt: str | None = None,
+    messages: list[dict] | None = None,
+    model: str | None = None,
+    **options,
+):
+    """
+    Generator yielding UTF-8 text chunks from Ollama (/api/chat or /api/generate),
+    serialized by _llm_semaphore and closing the upstream stream on disconnect/Stop.
+    """
+    resolved_model = model or get_active_model()
+    use_chat = bool(messages)
+    url = OLLAMA_CHAT_URL if use_chat else OLLAMA_GENERATE_URL
+    payload: dict = {
+        "model": resolved_model,
+        "stream": True,
+        "think": False,
+        "keep_alive": -1,
+    }
+    if use_chat:
+        payload["messages"] = messages
+    else:
+        payload["prompt"] = prompt or ""
+    if options:
+        payload["options"] = options
+
+    with _llm_semaphore:
+        try:
+            resp = requests.post(url, json=payload, stream=True, timeout=120)
+            resp.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                f"Cannot reach Ollama at {url}. "
+                "Make sure Ollama is running."
+            )
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Ollama request failed: {e}")
+
+        try:
+            for raw_line in resp.iter_lines(decode_unicode=True):
+                if not raw_line:
+                    continue
+                try:
+                    record = json.loads(raw_line)
+                except json.JSONDecodeError:
+                    continue
+                if record.get("error"):
+                    raise RuntimeError(str(record["error"]))
+                text = (record.get("message") or {}).get("content") or record.get("response")
+                if isinstance(text, str) and text:
+                    yield text.encode("utf-8")
+                if record.get("done"):
+                    break
+        finally:
+            resp.close()
 

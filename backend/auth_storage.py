@@ -95,18 +95,19 @@ def init_storage_db():
             );
         """)
 
-        # Check if users table is empty; if so, seed standard institutional dev accounts
-        cur = conn.execute("SELECT COUNT(*) FROM users;")
-        if cur.fetchone()[0] == 0:
-            seed_accounts = [
-                ("usr_student_01", "student@rvce.edu.in", "Student@123", "Rohan K.", "student", "CSE"),
-                ("usr_student_02", "aditi@rvce.edu.in", "Student@123", "Aditi Rao", "student", "CSE"),
-                ("usr_faculty_01", "faculty@rvce.edu.in", "Faculty@123", "Dr. Rajesh K.", "faculty", "Mathematics"),
-                ("usr_hod_01", "hod@rvce.edu.in", "Hod@123", "Dr. Sunitha M.", "hod", "CSE"),
-                ("usr_admin_01", "admin@rvce.edu.in", "Admin@123", "Campus Administrator", "admin", "IT Administration"),
-            ]
-            now = datetime.utcnow().isoformat()
-            for uid, email, pwd, name, role, dept in seed_accounts:
+        # Ensure standard institutional dev accounts exist (idempotent even on existing DBs)
+        seed_accounts = [
+            ("usr_student_01", "student@rvce.edu.in", "Student@123", "Rohan K.", "student", "CSE"),
+            ("usr_student_02", "aditi@rvce.edu.in", "Student@123", "Aditi Rao", "student", "CSE"),
+            ("usr_faculty_01", "faculty@rvce.edu.in", "Faculty@123", "Dr. Rajesh K.", "faculty", "Mathematics"),
+            ("usr_hod_01", "hod@rvce.edu.in", "Hod@123", "Dr. Sunitha M.", "hod", "CSE"),
+            ("usr_admin_01", "admin@rvce.edu.in", "Admin@123", "Campus Administrator", "admin", "IT Administration"),
+            ("usr_praneel_01", "praneelp.cs25@rvce.edu.in", "12345678", "Praneel P.", "admin", "CSE"),
+        ]
+        now = datetime.utcnow().isoformat()
+        for uid, email, pwd, name, role, dept in seed_accounts:
+            existing = conn.execute("SELECT 1 FROM users WHERE email = ?", (email.lower(),)).fetchone()
+            if not existing:
                 phash = hash_password(pwd)
                 conn.execute(
                     "INSERT INTO users (id, email, password_hash, name, role, department, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -267,12 +268,9 @@ def get_user_chat_sessions(user_id: str) -> List[Dict[str, Any]]:
             if m[4]:
                 try:
                     meta = json.loads(m[4])
-                    if "sqlMeta" in meta:
-                        msg_obj["sqlMeta"] = meta["sqlMeta"]
-                    if "result" in meta:
-                        msg_obj["result"] = meta["result"]
-                    if "docSources" in meta:
-                        msg_obj["docSources"] = meta["docSources"]
+                    for key in ("sqlMeta", "result", "docSources", "route", "timeTakenMs", "status"):
+                        if key in meta:
+                            msg_obj[key] = meta[key]
                 except Exception:
                     pass
             messages.append(msg_obj)
@@ -320,12 +318,9 @@ def get_chat_session(session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         if m[4]:
             try:
                 meta = json.loads(m[4])
-                if "sqlMeta" in meta:
-                    msg_obj["sqlMeta"] = meta["sqlMeta"]
-                if "result" in meta:
-                    msg_obj["result"] = meta["result"]
-                if "docSources" in meta:
-                    msg_obj["docSources"] = meta["docSources"]
+                for key in ("sqlMeta", "result", "docSources", "route", "timeTakenMs", "status"):
+                    if key in meta:
+                        msg_obj[key] = meta[key]
             except Exception:
                 pass
         messages.append(msg_obj)
@@ -356,7 +351,6 @@ def upsert_chat_session(session_data: Dict[str, Any], user_id: str) -> Dict[str,
         cur = conn.execute("SELECT user_id FROM chat_sessions WHERE id = ?", (sid,))
         existing = cur.fetchone()
         if existing and existing[0] != user_id:
-            conn.close()
             raise PermissionError("Session belongs to another user")
 
         if existing:
@@ -378,12 +372,9 @@ def upsert_chat_session(session_data: Dict[str, Any], user_id: str) -> Dict[str,
             mode = msg.get("mode", "chat")
             timestamp = msg.get("timestamp") or now_str
             meta_dict = {}
-            if "sqlMeta" in msg:
-                meta_dict["sqlMeta"] = msg["sqlMeta"]
-            if "result" in msg:
-                meta_dict["result"] = msg["result"]
-            if "docSources" in msg:
-                meta_dict["docSources"] = msg["docSources"]
+            for key in ("sqlMeta", "result", "docSources", "route", "timeTakenMs", "status"):
+                if key in msg and msg[key] is not None:
+                    meta_dict[key] = msg[key]
 
             metadata_json = json.dumps(meta_dict) if meta_dict else None
             conn.execute(
@@ -405,11 +396,12 @@ def delete_chat_session(session_id: str, user_id: str) -> bool:
     """Delete a chat session and cascade delete its messages, if owned by user."""
     init_storage_db()
     conn = get_storage_db()
-    with conn:
-        cur = conn.execute("SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
-        if not cur.fetchone():
-            conn.close()
-            return False
-        conn.execute("DELETE FROM chat_sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
-    conn.close()
-    return True
+    try:
+        with conn:
+            cur = conn.execute("SELECT id FROM chat_sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
+            if not cur.fetchone():
+                return False
+            conn.execute("DELETE FROM chat_sessions WHERE id = ? AND user_id = ?", (session_id, user_id))
+        return True
+    finally:
+        conn.close()

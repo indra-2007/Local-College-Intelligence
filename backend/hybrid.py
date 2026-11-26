@@ -396,6 +396,7 @@ def ask(question: str, role: str, model: str | None = None) -> dict:
         role:     One of 'student', 'faculty', 'hod', 'admin'.
         model:    Generation model (None = active model from llm_service).
 
+
     Returns:
         {
             answer:       str,

@@ -1,17 +1,116 @@
-import { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { DEFAULT_MODEL, FASTAPI_URL, OLLAMA_URL } from "@/lib/campus-api";
+import { currentSession } from "@/lib/current-session";
 
 export const runtime = "nodejs";
+type Turn = { role: "assistant" | "user"; content: string };
 
-export async function POST(request: NextRequest) {
+function isTurn(value: unknown): value is Turn {
+  if (!value || typeof value !== "object") return false;
+  return (
+    "role" in value &&
+    (value.role === "user" || value.role === "assistant") &&
+    "content" in value &&
+    typeof value.content === "string"
+  );
+}
+
+// Ollama records and UTF-8 characters can straddle network chunks.
+function responseText(body: ReadableStream<Uint8Array>) {
+  let pending = "";
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  function emit(line: string, out: TransformStreamDefaultController<Uint8Array>) {
+    if (!line.trim()) return;
+    const record = JSON.parse(line);
+    if (record.error) throw new Error(String(record.error));
+    const text = record.message?.content ?? record.response;
+    if (typeof text === "string" && text) out.enqueue(encoder.encode(text));
+  }
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, out) {
+        const lines = (pending + decoder.decode(chunk, { stream: true })).split("\n");
+        pending = lines.pop() ?? "";
+        for (const line of lines) emit(line, out);
+      },
+      flush(out) {
+        emit(pending + decoder.decode(), out);
+      },
+    })
+  );
+}
+
+export async function POST(request: Request) {
+  const session = await currentSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "Session expired or not signed in. Please sign in again." },
+      { status: 401 }
+    );
+  }
+
+  let payload: { prompt?: string; model?: string; messages?: unknown };
   try {
-    const { prompt, model } = await request.json();
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
+  }
 
-    const ollamaRes = await fetch("http://127.0.0.1:11435/api/generate", {
+  const { prompt, model, messages } = payload;
+  const chat = Array.isArray(messages) && messages.length > 0 && messages.every(isTurn);
+  if (!chat && (typeof prompt !== "string" || !prompt.trim())) {
+    return NextResponse.json({ error: "Enter a message first." }, { status: 400 });
+  }
+
+  // 1. Prefer FastAPI /chat (uses centralized GPU queue + server Ollama config)
+  try {
+    const backendRes = await fetch(`${FASTAPI_URL}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`,
+      },
+      signal: request.signal,
+      body: JSON.stringify({
+        ...(chat ? { messages } : { prompt }),
+        model: model || undefined,
+      }),
+      cache: "no-store",
+    });
+    if (backendRes.ok && backendRes.body) {
+      return new Response(backendRes.body, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+    // If backend returned a non-404 error (e.g. 503 Ollama down or 401), surface it
+    if (backendRes.status !== 404) {
+      const info = await backendRes.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: info.detail || info.error || "The local model could not answer." },
+        { status: backendRes.status }
+      );
+    }
+  } catch (err) {
+    if (request.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+      return new Response(null, { status: 499 });
+    }
+    // Fall through to direct OLLAMA_URL if FastAPI is unreachable or lacks /chat
+  }
+
+  // 2. Fallback to direct Ollama endpoint
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/${chat ? "chat" : "generate"}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: request.signal,
       body: JSON.stringify({
-        model: model || "qwen2.5-coder:7b",
-        prompt: prompt,
+        ...(chat ? { messages } : { prompt }),
+        model: model || DEFAULT_MODEL,
         stream: true,
         think: false,
         options: {
@@ -20,63 +119,27 @@ export async function POST(request: NextRequest) {
           top_k: 40,
           repeat_penalty: 1.1,
           num_predict: 1024,
-        }
+        },
       }),
     });
-
-    if (!ollamaRes.ok || !ollamaRes.body) {
-      const err = await ollamaRes.text().catch(() => "Ollama unreachable");
-      return new Response(JSON.stringify({ error: err }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!res.ok || !res.body) {
+      const info = await res.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: info.error || "The local model could not answer." },
+        { status: res.ok ? 502 : res.status }
+      );
     }
-
-    // Stream Ollama's NDJSON response → client as plain text chunks
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = ollamaRes.body!.getReader();
-        const decoder = new TextDecoder();
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n").filter(Boolean);
-            for (const line of lines) {
-              try {
-                const json = JSON.parse(line);
-                if (json.response) {
-                  controller.enqueue(new TextEncoder().encode(json.response));
-                }
-                if (json.done) {
-                  controller.close();
-                  return;
-                }
-              } catch {
-                // skip malformed lines
-              }
-            }
-          }
-        } catch (e) {
-          controller.error(e);
-        }
-      },
-    });
-
-    return new Response(stream, {
+    return new Response(responseText(res.body), {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Transfer-Encoding": "chunked",
+        "Cache-Control": "no-store",
         "X-Accel-Buffering": "no",
       },
     });
   } catch {
-    return new Response("Could not reach LLM. Check that Ollama is running and SSH tunnel is active.", {
-      status: 503,
-      headers: { "Content-Type": "text/plain" },
-    });
+    return NextResponse.json(
+      { error: "The local model is unavailable. Reconnect to Ollama and try again." },
+      { status: 503 }
+    );
   }
 }

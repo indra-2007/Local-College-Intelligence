@@ -1,16 +1,5 @@
-import { NextResponse } from "next/server";
+import { campusRequest } from "@/lib/campus-api";
 
-const FASTAPI = "http://127.0.0.1:8000";
-
-export async function GET() {
-  try {
-    const res = await fetch(`${FASTAPI}/gpu`, { cache: "no-store" });
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(
-      { available: false, error: "Backend unreachable" },
-      { status: 503 }
-    );
-  }
+export async function GET(request: Request) {
+  return campusRequest("/gpu", { signal: AbortSignal.any([request.signal, AbortSignal.timeout(4500)]) });
 }

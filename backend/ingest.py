@@ -17,10 +17,16 @@ import sys
 # ─── Config ──────────────────────────────────────────────────────────────────
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DOCS_DIR = os.path.join(ROOT, "unstructured_data", "synthetic")
-CHROMA_DIR = os.path.join(ROOT, "data", "chroma")
-COLLECTION = "institutional_docs"
-EMBED_MODEL = "all-MiniLM-L6-v2"
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from backend.config import (
+    DOCS_DIR,
+    CHROMA_DIR,
+    CHROMA_COLLECTION as COLLECTION,
+    EMBED_MODEL,
+)
+
 ROLES = ["student", "faculty", "hod", "admin"]
 MAX_CHUNK_CHARS = 1000  # sections longer than this are split on blank lines
 
@@ -70,7 +76,8 @@ def chunk_document(path: str):
 
     filename = os.path.basename(path)
     doc_title = meta.get("title", filename)
-    file_roles = parse_roles(meta.get("access", ""))
+    # Default to all roles when a plain .md or .txt file has no explicit access header.
+    file_roles = parse_roles(meta["access"]) if "access" in meta else list(ROLES)
 
     # Walk line by line, starting a new section at every #, ## or ### heading.
     sections = []  # (h2, h3, [lines])
@@ -138,9 +145,9 @@ def build_index():
     import chromadb
     from sentence_transformers import SentenceTransformer
 
-    files = sorted(f for f in os.listdir(DOCS_DIR) if f.endswith(".md"))
+    files = sorted(f for f in os.listdir(DOCS_DIR) if f.endswith((".md", ".txt")))
     if not files:
-        sys.exit(f"No .md files found in {DOCS_DIR}")
+        sys.exit(f"No .md or .txt files found in {DOCS_DIR}")
 
     all_chunks = []
     for fname in files:

@@ -11,10 +11,7 @@ import re
 import io
 import sqlite3
 import pandas as pd
-from backend.config import DB_PATH
-
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-STRUCTURED_DIR = os.path.join(ROOT_DIR, "structured_data")
+from backend.config import DB_PATH, STRUCTURED_DIR
 
 
 def get_db():

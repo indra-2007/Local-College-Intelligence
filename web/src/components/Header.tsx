@@ -1,102 +1,64 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { readJson } from "@/lib/workspace-client";
+import Icon from "./workspace/Icon";
+import styles from "./workspace/workspace.module.css";
 
-interface GpuStats {
-  available: boolean;
-  gpu_util_pct?: number;
-  mem_used_mb?: number;
-  mem_total_mb?: number;
-  temperature_c?: number;
-  gpu_name?: string;
-  error?: string;
-}
+type GpuStats = {
+  available: boolean; gpu_name?: string; gpu_util_pct?: number;
+  mem_used_mb?: number; mem_total_mb?: number; temperature_c?: number;
+};
+
+const number = (value: number | undefined, unit: string) =>
+  typeof value === "number" && Number.isFinite(value) ? `${value.toLocaleString()} ${unit}` : "—";
 
 export default function Header() {
   const [gpu, setGpu] = useState<GpuStats | null>(null);
 
   useEffect(() => {
-    const fetchGpu = () => {
-      fetch("/api/gpu")
-        .then((r) => r.json())
-        .then((data: GpuStats) => setGpu(data))
-        .catch(() => setGpu({ available: false, error: "unreachable" }));
-    };
-    fetchGpu();
-    const interval = setInterval(fetchGpu, 5000);
-    return () => clearInterval(interval);
+    let timer: number;
+    let active: AbortController;
+    async function sample() {
+      if (document.hidden) return;
+      const request = new AbortController();
+      active = request;
+      try {
+        const data = await readJson<GpuStats>("/api/gpu", { signal: request.signal });
+        if (!request.signal.aborted) setGpu(data?.available === true ? data : { available: false });
+      } catch {
+        if (!request.signal.aborted) setGpu({ available: false });
+      } finally {
+        if (!request.signal.aborted) timer = window.setTimeout(sample, 5000);
+      }
+    }
+    function stop() { window.clearTimeout(timer); active?.abort(); }
+    function visibility() { stop(); void sample(); }
+    void sample();
+    document.addEventListener("visibilitychange", visibility);
+    return () => { stop(); document.removeEventListener("visibilitychange", visibility); };
   }, []);
 
-  return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-surface/85 backdrop-blur-xl border-b border-surface-variant z-50">
-      <div className="w-full h-full px-space-lg flex items-center justify-between">
-        <div className="flex items-center gap-space-md">
-          <Image
-            alt="Brand logo."
-            width={120}
-            height={32}
-            className="h-8 w-auto object-contain"
-            src="https://lh3.googleusercontent.com/aida/AEtjO1X-f3Zd5H_jVeXeJo6-I4AbVYq1lETC2J6AYeV6jO9duYsSwdXSsqv5_HM73dYt4q8e5kdPjAZmPTaBWoPRF14i0sgf0kvP7sCVPHKcFd0of9deqVS9QZHGzw95ed_Js9Ol0jx2fRZhmJwuN67Uw8szoMAd8C5Jfw7HtIeSL1v4w8kEBA0V1sPpOss6ayHy8wwqTDJna4o1dJTyKQ7_maPGxvAlQS6mnQ-QCTMURe-4m5mX_JH1zA0rrQo"
-          />
-          <div className="flex flex-col">
-            <span className="font-headline-sm text-headline-sm text-on-surface leading-none">
-              RVCE Institutional AI
-            </span>
-            <span className="font-code-sm text-code-sm text-on-surface-variant mt-space-2xs">
-              Campus Intelligence
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-space-lg">
-          {/* ── GPU Stats Widget ── */}
-          {gpu?.available ? (
-            <div className="hidden md:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-tertiary-container/40 border border-tertiary text-on-tertiary-container">
-              <span className="material-symbols-outlined text-[14px]">memory</span>
-              <span className="font-label-sm text-label-sm font-medium">
-                GPU {gpu.gpu_util_pct}%
-              </span>
-              <span className="text-on-surface-variant font-label-sm text-label-sm">|</span>
-              <span className="font-label-sm text-label-sm font-medium">
-                {gpu.mem_used_mb}&#8239;/&#8239;{gpu.mem_total_mb}&#8239;MB
-              </span>
-              <span className="text-on-surface-variant font-label-sm text-label-sm">|</span>
-              <span className="font-label-sm text-label-sm font-medium">
-                {gpu.temperature_c}°C
-              </span>
-            </div>
-          ) : gpu !== null && !gpu.available ? (
-            <div className="hidden md:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-error-container/40 border border-error text-on-error-container">
-              <span className="material-symbols-outlined text-[14px]">warning</span>
-              <span className="font-label-sm text-label-sm">GPU N/A</span>
-            </div>
-          ) : null}
-
-          {/* ── Local AI Online badge ── */}
-          <div className="hidden sm:flex items-center gap-space-xs px-space-md py-space-2xs rounded-full bg-secondary-container/40 border border-secondary">
-            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-            <span className="font-label-sm text-label-sm text-on-secondary-container font-medium">
-              Local AI Online
-            </span>
-          </div>
-
-          <div className="flex items-center gap-space-md pl-space-md border-l border-surface-variant">
-            <div className="text-right hidden md:block">
-              <div className="font-label-md text-label-md text-on-surface font-medium leading-tight">
-                Rohan K.
-              </div>
-              <div className="font-label-sm text-label-sm text-on-surface-variant">
-                Student • CSE Dept
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="material-symbols-outlined text-on-primary text-[18px]">
-                person
-              </span>
-            </div>
-          </div>
-        </div>
+  const active = gpu?.available === true;
+  const load = active && Number.isFinite(gpu.gpu_util_pct) ? gpu.gpu_util_pct : undefined;
+  return <header className={styles.railHead}>
+    <Link className={styles.brand} href="/ai-assistant" aria-label="C-GPT, AI chat">
+      <span className={styles.door} aria-hidden="true"><i /></span>
+      <span><strong>C-GPT</strong><small>Local College Intelligence</small></span>
+    </Link>
+    <details className={styles.telemetry}>
+      <summary><Icon name="chip" size={15} /><span>GPU {load !== undefined ? `${load}%` : active ? "ready" : gpu ? "N/A" : "…"}</span>
+        <Icon name="chevron" size={12} /></summary>
+      <div className={styles.readings}>
+        {active ? <><strong>{gpu.gpu_name || "Local GPU"}</strong>
+          {load !== undefined && <meter min={0} max={100} value={load} aria-label="GPU utilization" />}
+          <dl><dt>Utilization</dt><dd>{number(load, "%")}</dd>
+            <dt>Memory used</dt><dd>{number(gpu.mem_used_mb, "MB")}</dd>
+            <dt>Total memory</dt><dd>{number(gpu.mem_total_mb, "MB")}</dd>
+            <dt>Temperature</dt><dd>{number(gpu.temperature_c, "°C")}</dd></dl></>
+          : <p>{gpu ? "GPU readings are unavailable." : "Checking GPU readings…"}</p>}
       </div>
-    </header>
-  );
+    </details>
+  </header>;
 }
