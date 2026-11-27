@@ -18,6 +18,7 @@ come from a verified server-side session token, never from the client or the LLM
 
 from backend.config import CHROMA_DIR, CHROMA_COLLECTION, EMBED_MODEL
 import backend.llm_service as llm_service
+import re
 import time
 
 VALID_ROLES = ["student", "faculty", "hod", "admin"]
@@ -35,6 +36,31 @@ _CONCEPT_SIGNALS = (
     "concept", "algorithm", "theory", "types of", "advantages", "disadvantages",
 )
 _BROAD_SIGNALS = ("entire syllabus", "all units", "full course", "complete syllabus", "all topics", "all modules")
+_NOT_FOUND_PATTERNS = (
+    r"i could not find this in the available (?:documents|data)\.?[^.\n]*\.?",
+    r"no matching passage was found\.?",
+)
+
+
+def _clean_rag_answer(answer: str) -> str:
+    text = answer or ""
+    text = re.sub(r"\[[^\]]*?\.(?:md|pdf|csv|txt)[^\]]*\]", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[[^\]\n]*?[›>][^\]\n]*?\]", "", text)
+    for pat in _NOT_FOUND_PATTERNS:
+        text = re.sub(pat, "", text, flags=re.IGNORECASE)
+    lines = [re.sub(r"[ \t]{2,}", " ", ln).strip() for ln in text.splitlines()]
+    lines = [ln for ln in lines if ln and ln not in ("-", "*", "•")]
+    return "\n".join(lines).strip()
+
+
+def _trim_context(text: str, max_chars: int = 2500) -> str:
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars]
+    last_break = max(cut.rfind("\n"), cut.rfind(". "))
+    if last_break > max_chars // 2:
+        return cut[: last_break + 1].strip()
+    return cut.strip() + "…"
 
 
 def _rag_classify_handoff(question: str, sources: list[dict], answer: str, chunks: list) -> dict:
@@ -42,30 +68,45 @@ def _rag_classify_handoff(question: str, sources: list[dict], answer: str, chunk
     q = question.lower()
     if any(sig in q for sig in _PERSONAL_SIGNALS):
         return {"eligible": False, "context": "", "topic": "", "is_broad": False}
-    # Check sources
+
+    cleaned_answer = _clean_rag_answer(answer)
+    is_conceptual = any(sig in q for sig in _CONCEPT_SIGNALS)
+
     eligible_src = any(
         any(s.get("source", "").startswith(p) for p in _ELIGIBLE_SOURCE_PREFIXES)
         and not any(s.get("source", "").startswith(b) for b in _INELIGIBLE_SOURCE_PREFIXES)
         for s in sources
     )
-    if not eligible_src:
+
+    topic_words = [w for w in question.split() if len(w) > 3 and w[0].isupper()]
+    topic = " ".join(topic_words[:3]) if topic_words else question[:40]
+
+    if not cleaned_answer:
+        if not is_conceptual:
+            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+        return {"eligible": True, "context": f"Question: {question}", "topic": topic, "is_broad": False}
+
+    if not eligible_src and not is_conceptual:
         return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+
     is_broad = any(sig in q for sig in _BROAD_SIGNALS)
-    source_refs = "; ".join(f"{s['source']} › {s.get('section', '')}" for s in sources[:4])
     if is_broad:
         chunk_texts, total = [], 0
         for chunk in chunks:
-            text = chunk[0] if isinstance(chunk, (list, tuple)) else str(chunk)
-            if total + len(text) > 2500:
+            raw_text = chunk[0] if isinstance(chunk, (list, tuple)) else str(chunk)
+            text = _clean_rag_answer(raw_text)
+            if not text:
+                continue
+            if total + len(text) > 3500:
                 break
             chunk_texts.append(text)
             total += len(text)
-        context = f"Question: {question}\n\nSources: {source_refs}\n\nContent:\n" + "\n---\n".join(chunk_texts)
+        context = f"Question: {question}\n\nSummary:\n{_trim_context(cleaned_answer, 1500)}"
+        if chunk_texts:
+            context += "\n\nContent:\n" + "\n---\n".join(chunk_texts)
     else:
-        context = f"Question: {question}\n\nAnswer Summary: {answer[:700]}\n\nSources: {source_refs}"
-    topic_words = [w for w in question.split() if len(w) > 3 and w[0].isupper()]
-    topic = " ".join(topic_words[:3]) if topic_words else question[:40]
-    return {"eligible": True, "context": context[:3000], "topic": topic, "is_broad": is_broad}
+        context = f"Question: {question}\n\nKey Context:\n{_trim_context(cleaned_answer, 2500)}"
+    return {"eligible": True, "context": context[:5000], "topic": topic, "is_broad": is_broad}
 
 # ─── Module-level lazy singletons ─────────────────────────────────────────────
 # Loaded once on first call; avoids reloading the 80 MB embedding model on every request.

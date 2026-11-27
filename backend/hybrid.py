@@ -448,6 +448,40 @@ _CONCEPT_SIGNALS = (
 )
 
 
+_NOT_FOUND_PATTERNS = (
+    r"i could not find this in the available (?:documents|data)\.?[^.\n]*\.?",
+    r"no matching (?:passage|rows|campus information) was found\.?",
+    r"\[?(?:structured data|document context)\s*[—-]\s*(?:unavailable|sql query returned 0 matching rows)[^\n]*\]?",
+)
+
+
+def _clean_handoff_answer(answer: str) -> str:
+    """Strip inline source citations and 'could not find' boilerplate from an answer."""
+    text = answer or ""
+    # Remove inline citations like [03_cse_syllabus_co_po.md › Unit 1] or [file.md > section]
+    text = re.sub(r"\[[^\]]*?\.(?:md|pdf|csv|txt)[^\]]*\]", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[[^\]\n]*?[›>][^\]\n]*?\]", "", text)
+    # Remove 'could not find' / unavailable boilerplate
+    for pat in _NOT_FOUND_PATTERNS:
+        text = re.sub(pat, "", text, flags=re.IGNORECASE)
+    # Clean leftover empty bullets / extra spaces / blank lines
+    lines = [re.sub(r"[ \t]{2,}", " ", ln).strip() for ln in text.splitlines()]
+    lines = [ln for ln in lines if ln and ln not in ("-", "*", "•")]
+    return "\n".join(lines).strip()
+
+
+def _extract_important_context(cleaned_answer: str, max_chars: int = 2500) -> str:
+    """Keep the full cleaned answer when within max_chars, or trim cleanly at a boundary."""
+    if len(cleaned_answer) <= max_chars:
+        return cleaned_answer
+    # Prefer keeping structured/bullet lines or complete sentences up to max_chars
+    cut = cleaned_answer[:max_chars]
+    last_break = max(cut.rfind("\n"), cut.rfind(". "))
+    if last_break > max_chars // 2:
+        return cut[: last_break + 1].strip()
+    return cut.strip() + "…"
+
+
 def _source_eligible(sources: list[dict]) -> bool:
     """Return True if any retrieved source belongs to an academic/syllabus doc."""
     if not sources:
@@ -493,60 +527,69 @@ def _classify_handoff(
     if any(sig in q for sig in _PERSONAL_SIGNALS):
         return {"eligible": False, "context": "", "topic": "", "is_broad": False}
 
+    cleaned_answer = _clean_handoff_answer(answer)
+
     # Hard block: pure SQL with individual student rows (non-aggregate)
     if route == SQL_ONLY:
-        # Eligible only if it's an aggregate query (no USN/individual columns)
-        sql = (sql_data or {}).get("sql", "") or ""
         result = (sql_data or {}).get("result", []) or []
         cols = {c.lower() for c in (sql_data or {}).get("columns", [])}
         has_individual = bool(cols & {"usn", "student_name", "name"}) and len(result) > 1
         if has_individual:
             return {"eligible": False, "context": "", "topic": "", "is_broad": False}
-        # Aggregate SQL — eligible (e.g. counts, averages)
-        context = f"Question: {question}\n\nAnswer:\n{answer[:600]}"
+        if not cleaned_answer:
+            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+        context = f"Question: {question}\n\nSummary:\n{_extract_important_context(cleaned_answer, 2000)}"
         return {"eligible": True, "context": context, "topic": "data query", "is_broad": False}
 
-    # RAG_ONLY or HYBRID: check doc sources
+    is_conceptual = any(sig in q for sig in _CONCEPT_SIGNALS)
     sources = (rag_data or {}).get("sources", []) or []
-    if not _source_eligible(sources):
+    src_ok = _source_eligible(sources)
+
+    # If RAG found nothing (empty cleaned_answer), allow handoff only for conceptual questions
+    # and never include "could not find" boilerplate in the prompt.
+    if not cleaned_answer:
+        if not is_conceptual:
+            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+        topic_words = [w for w in question.split() if len(w) > 3 and w[0].isupper()]
+        topic = " ".join(topic_words[:3]) if topic_words else question[:40]
+        return {
+            "eligible": True,
+            "context": f"Question: {question}",
+            "topic": topic,
+            "is_broad": False,
+        }
+
+    # If docs were retrieved, enforce source eligibility unless it's a clearly conceptual query
+    if sources and not src_ok and not is_conceptual:
         return {"eligible": False, "context": "", "topic": "", "is_broad": False}
 
-    # At least one conceptual signal required
-    is_conceptual = any(sig in q for sig in _CONCEPT_SIGNALS) or route in (RAG_ONLY,)
-    if not is_conceptual:
-        # Still check whether the route was doc-only (always conceptual by definition)
-        if route == SQL_ONLY:
-            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+    if not src_ok and not is_conceptual:
+        return {"eligible": False, "context": "", "topic": "", "is_broad": False}
 
     # Determine if broad or specific
     is_broad = any(sig in q for sig in _BROAD_SIGNALS)
 
-    # Build context payload (privacy-safe: answer text + doc metadata only, no SQL rows)
-    source_refs = "; ".join(
-        f"{s['source']} › {s.get('section', '')}" for s in sources[:4]
-    )
     if is_broad:
-        # Include doc chunk summaries (from rag_data chunks) up to 2500 chars
         chunks = (rag_data or {}).get("chunks", []) or []
         chunk_texts = []
         total = 0
         for chunk in chunks:
             text = chunk[0] if isinstance(chunk, (list, tuple)) else chunk.get("text", "")
-            if total + len(text) > 2500:
+            text = _clean_handoff_answer(text)
+            if not text:
+                continue
+            if total + len(text) > 3500:
                 break
             chunk_texts.append(text)
             total += len(text)
-        context = (
-            f"Question: {question}\n\n"
-            f"Sources: {source_refs}\n\n"
-            f"Syllabus/Regulation Content:\n" + "\n---\n".join(chunk_texts)
-        )
+        summary_block = _extract_important_context(cleaned_answer, 1500)
+        context = f"Question: {question}\n\nSummary:\n{summary_block}"
+        if chunk_texts:
+            context += "\n\nSyllabus/Reference Content:\n" + "\n---\n".join(chunk_texts)
     else:
-        # Specific concept: answer + source refs
         context = (
             f"Question: {question}\n\n"
-            f"Answer Summary: {answer[:700]}\n\n"
-            f"Sources: {source_refs}"
+            f"Key Context:\n{_extract_important_context(cleaned_answer, 2500)}"
         )
 
     # Topic label: first meaningful noun phrase from question
@@ -555,7 +598,7 @@ def _classify_handoff(
 
     return {
         "eligible": True,
-        "context": context[:3000],
+        "context": context[:5000],
         "topic": topic,
         "is_broad": is_broad,
     }
