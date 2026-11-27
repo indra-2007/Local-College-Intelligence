@@ -177,3 +177,57 @@
   .tableCount { display: none; }
 }
 @media (max-width: 440px) { .modes button svg { display: none; } }
+
+/* ── External AI Handoff Bar ───────────────────────────────────────────────── */
+.handoffBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.handoffLabel {
+  font: 500 .72rem/1.5 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.handoffBtn {
+  font-size: .78rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--handoff-accent, #888);
+  color: var(--handoff-accent, #888);
+  background: transparent;
+  cursor: pointer;
+  transition: background .15s ease, opacity .15s ease;
+  line-height: 1.6;
+}
+.handoffBtn:hover {
+  background: color-mix(in srgb, var(--handoff-accent, #888) 14%, transparent);
+}
+.handoffBtn:active {
+  opacity: .75;
+}
+.handoffToast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2e2d26;
+  color: #e8dfc8;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: .85rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  z-index: 999;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: toastIn 220ms ease-out;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
