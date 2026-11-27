@@ -26,24 +26,34 @@ const CHAT_PERSONAL_OR_ADMIN = [
   "my attendance", "my marks", "my cie", "my usn", "my cgpa",
   "my fee", "fee deadline", "room number", "my room", "my seat", "my timetable",
 ];
-const CHAT_CONCEPTUAL = [
-  "explain", "what is", "how does", "how do", "describe", "compare",
-  "difference between", "define", "example", "study", "quiz", "learn",
-  "understand", "concept", "algorithm", "theory", "syllabus", "revision",
-  "notes", "types of", "advantages", "disadvantages", "why",
-];
+const CHAT_TRIVIAL = new Set([
+  "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "bye", "good morning", "good evening",
+]);
 const CHAT_BROAD = [
   "entire syllabus", "all units", "full course", "complete syllabus",
   "all topics", "whole syllabus", "all modules",
 ];
 
+function cleanChatAnswer(answer: string): string {
+  return answer
+    .replace(/\[[^\]]*?\.(?:md|pdf|csv|txt)[^\]]*\]/gi, "")
+    .replace(/\[[^\]\n]*?[›>][^\]\n]*?\]/g, "")
+    .replace(/i could not find this in the available (?:documents|data)\.?[^.\n]*\.?/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function classifyChatHandoff(question: string, answer: string): ExternalHandoff | undefined {
-  const q = question.toLowerCase();
+  const q = question.toLowerCase().trim();
+  if (!q || CHAT_TRIVIAL.has(q.replace(/[.!?]+$/, ""))) return undefined;
   if (CHAT_PERSONAL_OR_ADMIN.some((sig) => q.includes(sig))) return undefined;
-  if (!CHAT_CONCEPTUAL.some((sig) => q.includes(sig))) return undefined;
   const isBroad = CHAT_BROAD.some((sig) => q.includes(sig));
-  const limit = isBroad ? 2500 : 700;
-  const context = `Question: ${question}\n\nAnswer Summary: ${answer.slice(0, limit)}`;
+  const limit = isBroad ? 4500 : 2500;
+  const cleaned = cleanChatAnswer(answer);
+  const body = cleaned.length > limit ? `${cleaned.slice(0, limit).trim()}…` : cleaned;
+  const context = body
+    ? `Question: ${question}\n\nKey Context:\n${body}`
+    : `Question: ${question}`;
   return {
     eligible: true,
     context,
