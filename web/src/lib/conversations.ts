@@ -20,6 +20,12 @@ export const routeLabels = {
 export type AskRoute = keyof typeof routeLabels;
 export type DataRow = Record<string, unknown>;
 export type Source = { source: string; section: string; distance?: number };
+export interface ExternalHandoff {
+  eligible: boolean;
+  context: string;
+  topic: string;
+  isBroad: boolean;
+}
 export interface Message extends ChatMessage {
   mode?: Mode;
   status?: "error" | "stopped";
@@ -28,6 +34,7 @@ export interface Message extends ChatMessage {
   result?: DataRow[];
   docSources?: Source[];
   timeTakenMs?: number;
+  externalHandoff?: ExternalHandoff;
 }
 export interface Thread extends ChatSession {
   messages: Message[];

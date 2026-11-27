@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { modeLabels, routeLabels, type Message } from "@/lib/conversations";
 import DataTable from "@/components/workspace/DataTable";
 import Icon from "@/components/workspace/Icon";
+import ExternalHandoffButtons from "./ExternalHandoffButtons";
 import styles from "./chat.module.css";
 
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
@@ -51,7 +52,7 @@ function CopyReply({ message }: { message: Message }) {
   </button>;
 }
 
-export default function Transcript({ messages, busy, showTimes = false }: { messages: Message[]; busy: boolean; showTimes?: boolean }) {
+export default function Transcript({ messages, busy, showTimes = false, role = "student" }: { messages: Message[]; busy: boolean; showTimes?: boolean; role?: string }) {
   return <ol className={styles.transcript} aria-label="Conversation">
     {messages.map((m, i) => {
       const user = m.role === "user";
@@ -79,6 +80,9 @@ export default function Transcript({ messages, busy, showTimes = false }: { mess
             <li key={n} title={Number.isFinite(s.distance) ? `Retrieval distance: ${s.distance}` : undefined}><Icon name="page" size={15} /><div><strong>{s.source}</strong>{s.section && <small>{s.section}</small>}</div></li>)}</ul>
         </div>}
         {typeof m.timeTakenMs === "number" && <small className={styles.elapsed}>{(m.timeTakenMs / 1000).toFixed(1)} s</small>}
+        {!user && m.externalHandoff?.eligible && !!m.content && !m.status && !(busy && i === messages.length - 1) && (
+          <ExternalHandoffButtons handoff={m.externalHandoff} role={role} />
+        )}
         {!user && !!m.content && !m.status && !(busy && i === messages.length - 1) && <CopyReply message={m} />}
       </li>;
     })}

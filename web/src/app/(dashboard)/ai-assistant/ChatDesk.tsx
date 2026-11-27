@@ -165,7 +165,7 @@ export default function ChatDesk({
           </div>
         </div>
         <PromptChoices key={mode} examples={info.examples} onSelect={selectExample} />
-      </div> : <Transcript messages={thread.messages} busy={busy} />}
+      </div> : <Transcript messages={thread.messages} busy={busy} role={audience} />}
     </div>
 
     <div className={styles.writeArea}>

@@ -10,7 +10,12 @@ export type SqlReply = {
   columns?: string[];
   result?: DataRow[];
 };
-export type DocsReply = { answer?: string; sources?: Source[]; time_taken_ms?: number };
+export type DocsReply = {
+  answer?: string;
+  sources?: Source[];
+  time_taken_ms?: number;
+  external_handoff?: { eligible: boolean; context: string; topic: string; is_broad: boolean };
+};
 export type AskReply = {
   answer?: string;
   error?: string;
@@ -22,6 +27,7 @@ export type AskReply = {
   sql_row_count?: number;
   sql_error?: string;
   doc_sources?: Source[];
+  external_handoff?: { eligible: boolean; context: string; topic: string; is_broad: boolean };
 };
 export type UploadReply = {
   status?: string;

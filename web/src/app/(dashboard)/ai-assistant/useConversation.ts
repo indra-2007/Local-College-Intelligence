@@ -6,6 +6,7 @@ import {
   readActiveThread,
   saveActiveThread,
   modeLabels,
+  type ExternalHandoff,
   type Message,
   type Mode,
   type Thread,
@@ -20,6 +21,36 @@ import {
 } from "@/lib/workspace-client";
 
 type Flight = { controller: AbortController; interrupted: () => Thread };
+
+const CHAT_PERSONAL_OR_ADMIN = [
+  "my attendance", "my marks", "my cie", "my usn", "my cgpa",
+  "my fee", "fee deadline", "room number", "my room", "my seat", "my timetable",
+];
+const CHAT_CONCEPTUAL = [
+  "explain", "what is", "how does", "how do", "describe", "compare",
+  "difference between", "define", "example", "study", "quiz", "learn",
+  "understand", "concept", "algorithm", "theory", "syllabus", "revision",
+  "notes", "types of", "advantages", "disadvantages", "why",
+];
+const CHAT_BROAD = [
+  "entire syllabus", "all units", "full course", "complete syllabus",
+  "all topics", "whole syllabus", "all modules",
+];
+
+function classifyChatHandoff(question: string, answer: string): ExternalHandoff | undefined {
+  const q = question.toLowerCase();
+  if (CHAT_PERSONAL_OR_ADMIN.some((sig) => q.includes(sig))) return undefined;
+  if (!CHAT_CONCEPTUAL.some((sig) => q.includes(sig))) return undefined;
+  const isBroad = CHAT_BROAD.some((sig) => q.includes(sig));
+  const limit = isBroad ? 2500 : 700;
+  const context = `Question: ${question}\n\nAnswer Summary: ${answer.slice(0, limit)}`;
+  return {
+    eligible: true,
+    context,
+    topic: question.slice(0, 40),
+    isBroad,
+  };
+}
 
 async function syncThreadToBackend(thread: Thread) {
   try {
@@ -159,6 +190,10 @@ export function useConversation(audience: string, userId: string, initialMode?: 
         }
         if (!reply.content.trim())
           throw new Error("The local model returned an empty response.");
+        reply = {
+          ...reply,
+          externalHandoff: classifyChatHandoff(prompt, reply.content),
+        };
       } else if (mode === "data") {
         const data = await readJson<SqlReply>(
           "/api/ask-sql",
@@ -218,6 +253,14 @@ export function useConversation(audience: string, userId: string, initialMode?: 
                 error: data.sql_error,
               }
             : undefined,
+          externalHandoff: data.external_handoff?.eligible
+            ? {
+                eligible: true,
+                context: data.external_handoff.context,
+                topic: data.external_handoff.topic,
+                isBroad: data.external_handoff.is_broad,
+              }
+            : undefined,
         };
       } else {
         const data = await readJson<DocsReply>(
@@ -229,6 +272,14 @@ export function useConversation(audience: string, userId: string, initialMode?: 
           content: data.answer || "No matching passage was found.",
           docSources: data.sources ?? [],
           timeTakenMs: data.time_taken_ms,
+          externalHandoff: data.external_handoff?.eligible
+            ? {
+                eligible: true,
+                context: data.external_handoff.context,
+                topic: data.external_handoff.topic,
+                isBroad: data.external_handoff.is_broad,
+              }
+            : undefined,
         };
       }
     } catch (error) {

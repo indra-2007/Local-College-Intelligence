@@ -415,6 +415,152 @@ def synthesize(
     return result.get("response", "").strip() or "I could not find this in the available data."
 
 
+# ─── External AI Handoff Classifier ──────────────────────────────────────────
+
+# Source files that contain academic/syllabus content safe to pass to external AI
+_ELIGIBLE_SOURCES = {
+    "03_cse_syllabus_co_po.md", "01_regulations_2022_scheme.md",
+    "02_regulations_2024_scheme.md", "25_syllabus_cse.md", "26_syllabus_aiml.md",
+    "24_scheme_cse.md", "05_student_clubs.md", "07_events_calendar.md",
+    "08_library_resources.md", "09_placement_cell.md",
+    # Match partial names with prefix checks (done below)
+}
+_INELIGIBLE_SOURCES = {
+    "15_fee_", "22_nri_pg_fees.md", "10_hostel_", "12_academic_calendar_",
+    "16_exam_", "23_disciplinary",
+}
+# Personal-data signals → never eligible
+_PERSONAL_SIGNALS = (
+    "my attendance", "my marks", "my cie", "my usn", "my cgpa",
+    "my fee", "my room", "my seat", "my timetable",
+)
+# Broad/full-syllabus signals
+_BROAD_SIGNALS = (
+    "entire syllabus", "all units", "full course", "complete syllabus",
+    "all topics", "whole syllabus", "all modules",
+)
+# Conceptual/academic question signals
+_CONCEPT_SIGNALS = (
+    "explain", "what is", "how does", "how do", "describe", "compare",
+    "difference between", "define", "example", "examples", "study",
+    "learn", "understand", "concept", "algorithm", "theory", "types of",
+    "advantages", "disadvantages", "applications", "use case",
+)
+
+
+def _source_eligible(sources: list[dict]) -> bool:
+    """Return True if any retrieved source belongs to an academic/syllabus doc."""
+    if not sources:
+        return False
+    for s in sources:
+        src = s.get("source", "")
+        # Check exact match
+        if src in _ELIGIBLE_SOURCES:
+            return True
+        # Partial prefix check for regulations/syllabus patterns
+        if any(src.startswith(p) for p in (
+            "01_regulations", "02_regulations", "25_syllabus", "26_syllabus",
+            "24_scheme", "03_cse_syllabus", "04_", "06_",
+        )):
+            # But exclude personal/admin docs
+            if not any(src.startswith(bad) for bad in _INELIGIBLE_SOURCES):
+                return True
+    return False
+
+
+def _classify_handoff(
+    question: str,
+    route: str,
+    sql_data: dict | None,
+    rag_data: dict | None,
+    role: str,
+    answer: str,
+) -> dict:
+    """
+    Classify whether the response is eligible for external AI handoff.
+
+    Returns:
+        {
+          "eligible": bool,
+          "context":  str,   # role-aware, privacy-safe prompt payload
+          "topic":    str,   # short topic label
+          "is_broad": bool,  # True when full-syllabus payload is included
+        }
+    """
+    q = question.lower()
+
+    # Hard block: personal data questions
+    if any(sig in q for sig in _PERSONAL_SIGNALS):
+        return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+
+    # Hard block: pure SQL with individual student rows (non-aggregate)
+    if route == SQL_ONLY:
+        # Eligible only if it's an aggregate query (no USN/individual columns)
+        sql = (sql_data or {}).get("sql", "") or ""
+        result = (sql_data or {}).get("result", []) or []
+        cols = {c.lower() for c in (sql_data or {}).get("columns", [])}
+        has_individual = bool(cols & {"usn", "student_name", "name"}) and len(result) > 1
+        if has_individual:
+            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+        # Aggregate SQL — eligible (e.g. counts, averages)
+        context = f"Question: {question}\n\nAnswer:\n{answer[:600]}"
+        return {"eligible": True, "context": context, "topic": "data query", "is_broad": False}
+
+    # RAG_ONLY or HYBRID: check doc sources
+    sources = (rag_data or {}).get("sources", []) or []
+    if not _source_eligible(sources):
+        return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+
+    # At least one conceptual signal required
+    is_conceptual = any(sig in q for sig in _CONCEPT_SIGNALS) or route in (RAG_ONLY,)
+    if not is_conceptual:
+        # Still check whether the route was doc-only (always conceptual by definition)
+        if route == SQL_ONLY:
+            return {"eligible": False, "context": "", "topic": "", "is_broad": False}
+
+    # Determine if broad or specific
+    is_broad = any(sig in q for sig in _BROAD_SIGNALS)
+
+    # Build context payload (privacy-safe: answer text + doc metadata only, no SQL rows)
+    source_refs = "; ".join(
+        f"{s['source']} › {s.get('section', '')}" for s in sources[:4]
+    )
+    if is_broad:
+        # Include doc chunk summaries (from rag_data chunks) up to 2500 chars
+        chunks = (rag_data or {}).get("chunks", []) or []
+        chunk_texts = []
+        total = 0
+        for chunk in chunks:
+            text = chunk[0] if isinstance(chunk, (list, tuple)) else chunk.get("text", "")
+            if total + len(text) > 2500:
+                break
+            chunk_texts.append(text)
+            total += len(text)
+        context = (
+            f"Question: {question}\n\n"
+            f"Sources: {source_refs}\n\n"
+            f"Syllabus/Regulation Content:\n" + "\n---\n".join(chunk_texts)
+        )
+    else:
+        # Specific concept: answer + source refs
+        context = (
+            f"Question: {question}\n\n"
+            f"Answer Summary: {answer[:700]}\n\n"
+            f"Sources: {source_refs}"
+        )
+
+    # Topic label: first meaningful noun phrase from question
+    topic_words = [w for w in question.split() if len(w) > 3 and w[0].isupper()]
+    topic = " ".join(topic_words[:3]) if topic_words else question[:40]
+
+    return {
+        "eligible": True,
+        "context": context[:3000],
+        "topic": topic,
+        "is_broad": is_broad,
+    }
+
+
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
 def ask(
@@ -476,14 +622,17 @@ def ask(
 
     time_taken_ms = round((time.time() - t0) * 1000)
 
+    handoff = _classify_handoff(question, route, sql_data, rag_data, role, answer)
+
     return {
-        "answer":        answer,
-        "route":         route,
-        "sql_query":     sql_data.get("sql") if sql_data else None,
-        "sql_result":    sql_data.get("result") if sql_data else None,
-        "sql_columns":   sql_data.get("columns") if sql_data else None,
-        "sql_row_count": sql_data.get("row_count") if sql_data else None,
-        "sql_error":     sql_data.get("error") if sql_data else None,
-        "doc_sources":   rag_data.get("sources", []) if rag_data else [],
-        "time_taken_ms": time_taken_ms,
+        "answer":           answer,
+        "route":            route,
+        "sql_query":        sql_data.get("sql") if sql_data else None,
+        "sql_result":       sql_data.get("result") if sql_data else None,
+        "sql_columns":      sql_data.get("columns") if sql_data else None,
+        "sql_row_count":    sql_data.get("row_count") if sql_data else None,
+        "sql_error":        sql_data.get("error") if sql_data else None,
+        "doc_sources":      rag_data.get("sources", []) if rag_data else [],
+        "time_taken_ms":    time_taken_ms,
+        "external_handoff": handoff,
     }
