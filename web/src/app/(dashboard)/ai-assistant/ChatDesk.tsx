@@ -122,7 +122,7 @@ export default function ChatDesk({
   }
 
   return <section className={`${shared.page} ${styles.desk}`} data-mode={mode} aria-labelledby="chat-heading">
-    <header className={shared.pageHead}><h1 id="chat-heading" aria-label="AI chat"><TitleLetters text="AI chat" /></h1>
+    <header className={shared.pageHead}><h1 id="chat-heading" aria-label="Go Change the World"><TitleLetters text="Go Change the World" /></h1>
       <button type="button" className={shared.ghost} disabled={busy || !thread} onClick={() => {
         conversation.newThread(); setDrafts(emptyDrafts); follow.current = true; composer.current?.focus();
       }}><Icon name="plus" size={16} />New chat</button>

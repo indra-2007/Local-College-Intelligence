@@ -163,25 +163,112 @@ def format_history(history: list[dict] | None, max_turns: int = 6) -> str:
     return "Previous conversation in this chat:\n" + "\n".join(lines) + "\n\n"
 
 
-def contextualize_search_query(question: str, history: list[dict] | None) -> str:
+def contextualize_search_query(
+    question: str,
+    history: list[dict] | None,
+    model: str | None = None,
+) -> str:
     """
     If the current question is a follow-up referencing earlier turns in this chat,
-    combine it with the most recent user turn so vector retrieval stays on topic.
+    rewrite it into a standalone search query so vector retrieval stays on topic
+    (handling both pronoun references and subject switches like 'give for OS also').
     """
     if not history:
         return question
+    recent = [
+        t for t in history[-4:]
+        if str(t.get("role", "")).lower() in ("user", "assistant")
+        and str(t.get("content", "")).strip()
+    ]
     last_user = next(
-        (str(t.get("content", "")).strip() for t in reversed(history)
-         if str(t.get("role", "")).lower() == "user" and str(t.get("content", "")).strip()),
+        (str(t.get("content", "")).strip() for t in reversed(recent)
+         if str(t.get("role", "")).lower() == "user"),
         "",
     )
     if not last_user:
         return question
+
     q_words = question.lower().split()
-    followup_markers = {"it", "them", "those", "that", "these", "this", "above", "same", "they", "he", "she", "their", "her", "his"}
-    if len(q_words) <= 8 or any(w.strip("?.,!") in followup_markers for w in q_words):
-        return f"{last_user} {question}"
-    return question
+    followup_markers = {
+        "it", "its", "them", "those", "that", "these", "this", "above", "same",
+        "they", "he", "she", "their", "her", "his", "also", "too", "else",
+        "another", "other", "more", "details", "credits", "syllabus",
+    }
+    is_followup = len(q_words) <= 10 or any(w.strip("?.,!") in followup_markers for w in q_words)
+    if not is_followup:
+        return question
+
+    convo_lines = []
+    for t in recent:
+        label = "User" if str(t.get("role", "")).lower() == "user" else "Assistant"
+        convo_lines.append(f"{label}: {str(t.get('content', '')).strip()[:280]}")
+    convo = "\n".join(convo_lines)
+
+    rewrite_prompt = (
+        "/no_think Rewrite the latest user follow-up into ONE self-contained search question "
+        "using the chat history. If the follow-up switches to a new subject (e.g. 'give for OS also'), "
+        "replace the old subject with the new subject and keep the original intent. "
+        "Output ONLY the rewritten question, nothing else.\n\n"
+        f"{convo}\n"
+        f"Latest follow-up: {question}\n"
+        "Standalone question:"
+    )
+    try:
+        res = generate(
+            prompt=rewrite_prompt,
+            model=model,
+            temperature=0.0,
+            num_predict=55,
+            num_ctx=1024,
+        )
+        rewritten = (res.get("response") or "").strip().splitlines()[0].strip().strip('"')
+        if rewritten and len(rewritten) >= 6:
+            return rewritten
+    except Exception:
+        pass
+
+    return f"{last_user} {question}"
+
+
+def repair_sql_column_names(sql: str, conn) -> str:
+    """
+    If the LLM dropped/doubled underscores on column names (e.g. 'el_score__max_40'
+    instead of 'el_score__max_40_'), map them back to the exact SQLite column names
+    by comparing underscore-collapsed forms.
+    """
+    import re
+    import sqlite3
+
+    def _norm(name: str) -> str:
+        return re.sub(r"_+", "_", name.lower()).strip("_")
+
+    try:
+        tables = [
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table';"
+            ).fetchall()
+        ]
+        norm_map: dict[str, set[str]] = {}
+        all_cols: set[str] = set()
+        for tbl in tables:
+            for col_info in conn.execute(f'PRAGMA table_info("{tbl}");').fetchall():
+                col = col_info[1]
+                all_cols.add(col)
+                norm_map.setdefault(_norm(col), set()).add(col)
+    except sqlite3.Error:
+        return sql
+
+    # Replace identifiers that aren't exact column names but uniquely match a normalized column
+    def _replace_ident(match: re.Match) -> str:
+        word = match.group(0)
+        if word in all_cols:
+            return word
+        candidates = norm_map.get(_norm(word))
+        if candidates and len(candidates) == 1:
+            return next(iter(candidates))
+        return word
+
+    return re.sub(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", _replace_ident, sql)
 
 
 def stream_chat(

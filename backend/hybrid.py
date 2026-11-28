@@ -197,11 +197,12 @@ def run_sql(
         f"Tables:\n{schema}\n\n"
         f"{role_note}"
         "Rules:\n"
-        "- Use ONLY column names from the schema above; pick the single best table whose columns match the question.\n"
+        "- Use ONLY exact column names from the schema above (including trailing underscores like el_score__max_40_ and attendance__); pick the single best table whose columns match the question, or JOIN on usn across attendance tables when asked for multiple courses.\n"
         "- Prefer filtering directly on that table's own columns (e.g. WHERE branch = 'CSE') instead of subqueries to other tables.\n"
         "- Numeric columns compare as numbers.\n"
-        "- CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0!). "
-        "ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values "
+        "- IMPORTANT: 'attendance__' is ALREADY a 0–100 percentage (e.g. 86 means 86%) — NEVER multiply or divide 'attendance__' by 100.0 or total_classes_held (use WHERE attendance__ < 75 and AVG(attendance__) directly; only use '* 100.0 / total_classes_held' with 'classes_attended').\n"
+        "- CRITICAL for SQLite integer division on marks: SQLite does integer division on integers (12 / 15 = 0!). "
+        "ALWAYS multiply by 100.0 FIRST and use .0 on divisors when dividing *_max_N_ sums by the SUM of their max values "
         "(e.g. AVG((q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0)), NEVER write / 15 * 100 or / 100.\n"
         "- If the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), "
         "reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns — "
@@ -219,7 +220,7 @@ def run_sql(
             prompt=prompt,
             model=model,
             temperature=0.0,
-            num_predict=180,
+            num_predict=350,
             num_ctx=4096,
         )
     except RuntimeError as e:
@@ -236,6 +237,7 @@ def run_sql(
                 "error": "LLM did not produce a SELECT statement."}
 
     conn = _get_db()
+    sql = llm_service.repair_sql_column_names(sql, conn)
     try:
         df = pd.read_sql_query(sql, conn)
     except Exception as e:
@@ -643,7 +645,7 @@ def ask(
 
     # ── 1. Route classification ───────────────────────────────────────────────
     route = route_query(question, tables, model, history=history)
-    rag_query = llm_service.contextualize_search_query(question, history)
+    rag_query = llm_service.contextualize_search_query(question, history, model=model)
 
     # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None

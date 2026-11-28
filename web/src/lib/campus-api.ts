@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export const FASTAPI_URL =
   process.env.FASTAPI_URL ?? process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 export const OLLAMA_URL =
-  process.env.OLLAMA_URL ?? process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11435";
+  process.env.OLLAMA_URL ?? process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
 export const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? "qwen2.5-coder:7b";
 export const SESSION_COOKIE = "cgpt_token";
 
