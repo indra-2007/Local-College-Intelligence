@@ -10,10 +10,16 @@ export default function WorkspaceNav({
   role,
   userName,
   userId,
+  open,
+  onToggle,
+  onCloseMobile,
 }: {
   role: string;
   userName?: string;
   userId?: string;
+  open: boolean;
+  onToggle: () => void;
+  onCloseMobile: () => void;
 }) {
   async function leave() {
     clearActiveThread(userId);
@@ -26,9 +32,21 @@ export default function WorkspaceNav({
     window.location.replace("/login");
   }
   return (
-    <aside className={styles.rail}>
-      <Header />
-      <Sidebar />
+    <aside className={styles.rail} aria-hidden={!open || undefined}>
+      <div className={styles.railTop}>
+        <Header />
+        <button
+          type="button"
+          className={styles.railClose}
+          aria-label="Hide navigation menu"
+          aria-expanded={open}
+          title="Hide menu"
+          onClick={onToggle}
+        >
+          <Icon name="sidebar" size={18} />
+        </button>
+      </div>
+      <Sidebar onNavigate={onCloseMobile} />
       <div className={styles.railPhoto} aria-hidden="true" />
       <div className={styles.railFooter}>
         <div>

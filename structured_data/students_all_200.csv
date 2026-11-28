@@ -1,0 +1,201 @@
+student_id,usn,student_name,department_code,program,degree,batch_year,semester,academic_year,section,gender,admission_type,quota_type,category,hostel_status,bus_opted,current_cgpa,student_status
+STU0001,1RV25CS001,Mahima Varma,CS,CSE,B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Hosteller,No,8.47,Active
+STU0002,1RV25CS002,Bharath Rao,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,3A,Hosteller,No,8.76,Active
+STU0003,1RV25CS003,Suraj Iyer,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,7.64,Active
+STU0004,1RV25CS004,Advait Agarwal,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Hosteller,No,8.66,Active
+STU0005,1RV25CS005,Santosh Hebbar,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,Yes,9.12,Active
+STU0006,1RV25CS006,Yogesh Ahmed,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,Yes,8.98,Active
+STU0007,1RV25CS007,Skanda Patil,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,Yes,7.72,Active
+STU0008,1RV25CS008,Ananya Khan,CS,CSE,B.E,2025,3,2026-27,A,Female,KCET,Regular,Cat-1,Day Scholar,No,9.90,Active
+STU0009,1RV25CS009,Aarohi Mehta,CS,CSE,B.E,2025,3,2026-27,A,Female,Management,Management,GM,Day Scholar,Yes,9.18,Active
+STU0010,1RV25CS010,Kishore Swamy,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Day Scholar,No,8.94,Active
+STU0011,1RV25CS011,Tejas Rai,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Hosteller,No,8.18,Active
+STU0012,1RV25CS012,Akash Joshi,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,8.21,Active
+STU0013,1RV25CS013,Sharath Gupta,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Hosteller,No,9.08,Active
+STU0014,1RV25CS014,Obulamma Fernandes,CS,CSE,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,8.23,Active
+STU0015,1RV25CS015,Yogesh Singh,CS,CSE,B.E,2025,3,2026-27,A,Male,Management,Management,GM,Day Scholar,Yes,8.47,Active
+STU0016,1RV25CS016,Farhan Menon,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,8.54,Active
+STU0017,1RV25CS017,Radhika Nambiar,CS,CSE,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Day Scholar,Yes,9.28,Active
+STU0018,1RV25CS018,Bharath Rai,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,9.57,Active
+STU0019,1RV25CS019,Vivek Kumar,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,9.04,Active
+STU0020,1RV25CS020,Naveen Bhandari,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Day Scholar,Yes,7.13,Active
+STU0021,1RV25CS021,Arjun Kini,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,8.99,Active
+STU0022,1RV25CS022,Kruthi Upadhyaya,CS,CSE,B.E,2025,3,2026-27,A,Female,KCET,Regular,2A,Day Scholar,Yes,8.37,Active
+STU0023,1RV25CS023,Rohan Pai,CS,CSE,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,6.29,Active
+STU0024,1RV25CS024,Varun Gowda,CS,CSE,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,9.53,Active
+STU0025,1RV25CS025,Urvi Hebbar,CS,CSE,B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Hosteller,No,8.95,Active
+STU0026,1RV25CS026,Eshwar Lobo,CS,CSE,B.E,2025,3,2026-27,B,Male,Management,Management,GM,Day Scholar,Yes,7.43,Active
+STU0027,1RV25CS027,Deeksha Menon,CS,CSE,B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,8.37,Active
+STU0028,1RV25CS028,Neha Hegde,CS,CSE,B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,9.59,Active
+STU0029,1RV25CS029,Reyansh Acharya,CS,CSE,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,8.07,Active
+STU0030,1RV25CS030,Meera Chandra,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,3A,Hosteller,No,8.61,Active
+STU0031,1RV25CS031,Mohan Mishra,CS,CSE,B.E,2025,3,2026-27,B,Male,KCET,Regular,SC,Hosteller,No,8.84,Active
+STU0032,1RV25CS032,Zoya Kumar,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,Cat-1,Day Scholar,Yes,8.91,Active
+STU0033,1RV25CS033,Vinay Hegde,CS,CSE,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,7.95,Active
+STU0034,1RV25CS034,Mahesh Kulkarni,CS,CSE,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,Yes,9.90,Active
+STU0035,1RV25CS035,Prajwal Bose,CS,CSE,B.E,2025,3,2026-27,B,Male,KCET,Regular,SC,Hosteller,No,8.38,Active
+STU0036,1RV25CS036,Kiran Pandey,CS,CSE,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.33,Active
+STU0037,1RV25CS037,Mahima Joshi,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,3B,Day Scholar,No,9.24,Active
+STU0038,1RV25CS038,Anjali Rangan,CS,CSE,B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,9.90,Active
+STU0039,1RV25CS039,Harini Swamy,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,3B,Hosteller,No,8.31,Active
+STU0040,1RV25CS040,Tejas Hiremath,CS,CSE,B.E,2025,3,2026-27,B,Male,KCET,Regular,3A,Day Scholar,No,9.53,Active
+STU0041,1RV25CS041,Bhumika Verma,CS,CSE,B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,7.43,Active
+STU0042,1RV25CS042,Obulamma Agarwal,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,3B,Hosteller,No,7.61,Active
+STU0043,1RV25CS043,Riya Hegde,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,2B,Hosteller,No,6.99,Active
+STU0044,1RV25CS044,Madhav George,CS,CSE,B.E,2025,3,2026-27,B,Male,Management,Management,GM,Hosteller,No,5.91,Active
+STU0045,1RV25CS045,Santosh Bhandari,CS,CSE,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.81,Active
+STU0046,1RV25CS046,Riya Varma,CS,CSE,B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,No,9.15,Active
+STU0047,1RV25CS047,Kruthi Bose,CS,CSE,B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Hosteller,No,9.10,Active
+STU0048,1RV25CS048,Samiksha Menon,CS,CSE,B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,9.30,Active
+STU0049,1RV25CS049,Tarun Jain,CS,CSE,B.E,2025,3,2026-27,B,Male,Management,Management,GM,Day Scholar,Yes,8.43,Active
+STU0050,1RV25CS050,Atharv Hiremath,CS,CSE,B.E,2025,3,2026-27,B,Male,KCET,Regular,2A,Hosteller,No,9.49,Active
+STU0051,1RV25CI001,Nandini Agarwal,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,3B,Hosteller,No,8.41,Active
+STU0052,1RV25CI002,Vivek Narayan,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,8.49,Active
+STU0053,1RV25CI003,Zoya Bhandari,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Day Scholar,No,7.81,Active
+STU0054,1RV25CI004,Aditya Mukherjee,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,Management,Management,GM,Hosteller,No,8.40,Active
+STU0055,1RV25CI005,Deepak Gopal,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,7.93,Active
+STU0056,1RV25CI006,Varun Kapoor,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,9.14,Active
+STU0057,1RV25CI007,Kabir Varma,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,Yes,7.89,Active
+STU0058,1RV25CI008,Vidya Bhat,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,6.94,Active
+STU0059,1RV25CI009,Deeksha Poojary,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,8.96,Active
+STU0060,1RV25CI010,Pranathi Naik,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,Cat-1,Day Scholar,Yes,8.96,Active
+STU0061,1RV25CI011,Padma Krishnan,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Day Scholar,Yes,9.44,Active
+STU0062,1RV25CI012,Ishaan Prabhu,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,Yes,8.93,Active
+STU0063,1RV25CI013,Prathik Bhandari,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,9.50,Active
+STU0064,1RV25CI014,Nithin Siddiqui,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Day Scholar,Yes,8.73,Active
+STU0065,1RV25CI015,Anjali Naik,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,SC,Hosteller,No,8.54,Active
+STU0066,1RV25CI016,Ira Das,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,ST,Hosteller,No,7.58,Active
+STU0067,1RV25CI017,Samuel Pandey,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,8.57,Active
+STU0068,1RV25CI018,Manoj Narayan,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Day Scholar,No,8.69,Active
+STU0069,1RV25CI019,Nikhil Ghosh,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Hosteller,No,9.11,Active
+STU0070,1RV25CI020,Anirudh Hiremath,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,8.26,Active
+STU0071,1RV25CI021,Vinay Nambiar,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,Yes,8.01,Active
+STU0072,1RV25CI022,Arjun Swamy,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,Management,Management,GM,Day Scholar,No,8.42,Active
+STU0073,1RV25CI023,Basavaraj Varma,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,6.88,Active
+STU0074,1RV25CI024,Abhishek Pillai,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Hosteller,No,8.90,Active
+STU0075,1RV25CI025,Sahana Jain,CI,CSE (AI & ML),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Day Scholar,No,9.57,Active
+STU0076,1RV25CI026,Omkar Swamy,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,7.57,Active
+STU0077,1RV25CI027,Chirag Ahmed,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,8.40,Active
+STU0078,1RV25CI028,Aarav Kamath,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,Management,Management,GM,Hosteller,No,9.90,Active
+STU0079,1RV25CI029,Meera Menon,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Hosteller,No,7.87,Active
+STU0080,1RV25CI030,Zaid Bhaskar,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Hosteller,No,9.27,Active
+STU0081,1RV25CI031,Sahana Swamy,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Hosteller,No,9.69,Active
+STU0082,1RV25CI032,Varsha Joshi,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,8.18,Active
+STU0083,1RV25CI033,Spoorthi Khan,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,9.90,Active
+STU0084,1RV25CI034,Jayanth Prasad,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,7.31,Active
+STU0085,1RV25CI035,Mohan Rai,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,2A,Hosteller,No,8.95,Active
+STU0086,1RV25CI036,Greeshma Gupta,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,Management,Management,GM,Day Scholar,Yes,5.50,Active
+STU0087,1RV25CI037,Reyansh Shetty,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Hosteller,No,8.83,Active
+STU0088,1RV25CI038,Rashmi Gopal,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,KCET,Regular,2A,Hosteller,No,9.01,Active
+STU0089,1RV25CI039,Yamini Bhaskar,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,KCET,Regular,Cat-1,Hosteller,No,9.68,Active
+STU0090,1RV25CI040,Suraj Gopal,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,6.58,Active
+STU0091,1RV25CI041,Samiksha Murthy,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,7.97,Active
+STU0092,1RV25CI042,Chetan Tiwari,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,9.62,Active
+STU0093,1RV25CI043,Raghav Patil,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,Management,Management,GM,Day Scholar,Yes,8.82,Active
+STU0094,1RV25CI044,Manasa Khan,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,9.35,Active
+STU0095,1RV25CI045,Pavan Fernandes,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,No,6.81,Active
+STU0096,1RV25CI046,Priya Kini,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,KCET,Regular,3B,Day Scholar,No,8.95,Active
+STU0097,1RV25CI047,Vikram Sharma,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,7.33,Active
+STU0098,1RV25CI048,Aditya Kamath,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,9.24,Active
+STU0099,1RV25CI049,Neeraj Prasad,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,Yes,8.45,Active
+STU0100,1RV25CI050,Charvi Reddy,CI,CSE (AI & ML),B.E,2025,3,2026-27,B,Female,Management,Management,GM,Day Scholar,No,9.46,Active
+STU0101,1RV25CY001,Janani Iyer,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Day Scholar,No,7.61,Active
+STU0102,1RV25CY002,Trisha Menon,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,3B,Day Scholar,Yes,9.88,Active
+STU0103,1RV25CY003,Rohan Chandra,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,Yes,9.12,Active
+STU0104,1RV25CY004,Medha Narayan,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Hosteller,No,9.62,Active
+STU0105,1RV25CY005,Ishita Kapoor,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Day Scholar,No,7.62,Active
+STU0106,1RV25CY006,Manoj Poojary,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Day Scholar,Yes,7.75,Active
+STU0107,1RV25CY007,Gautam Bhandari,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,9.78,Active
+STU0108,1RV25CY008,Kiran Murthy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,8.78,Active
+STU0109,1RV25CY009,Omkar Upadhyaya,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,8.39,Active
+STU0110,1RV25CY010,Neeraj Acharya,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,ST,Day Scholar,Yes,7.88,Active
+STU0111,1RV25CY011,Sowmya Kapoor,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Day Scholar,No,7.58,Active
+STU0112,1RV25CY012,Harsha Patil,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,Management,Management,GM,Hosteller,No,6.75,Active
+STU0113,1RV25CY013,Srinivas Bhat,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,7.52,Active
+STU0114,1RV25CY014,Gayathri Fernandes,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Day Scholar,Yes,8.35,Active
+STU0115,1RV25CY015,Ishaan Saxena,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,9.68,Active
+STU0116,1RV25CY016,Lavanya Saxena,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,2B,Hosteller,No,9.90,Active
+STU0117,1RV25CY017,Chetan Verma,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,7.94,Active
+STU0118,1RV25CY018,Prathik Reddy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,8.52,Active
+STU0119,1RV25CY019,Sachin Iyengar,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,Yes,9.11,Active
+STU0120,1RV25CY020,Charvi Pandey,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,7.98,Active
+STU0121,1RV25CY021,Radhika Nair,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Hosteller,No,8.05,Active
+STU0122,1RV25CY022,Chirag Mishra,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,8.86,Active
+STU0123,1RV25CY023,Gautam Sen,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,Yes,9.78,Active
+STU0124,1RV25CY024,Chitra Prabhu,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,9.90,Active
+STU0125,1RV25CY025,Rishi Shenoy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,A,Male,Management,Management,GM,Day Scholar,No,9.90,Active
+STU0126,1RV25CY026,Rahul Hiremath,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,Management,Management,GM,Day Scholar,No,9.20,Active
+STU0127,1RV25CY027,Shreya Kamath,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,9.41,Active
+STU0128,1RV25CY028,Rakesh Poojary,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Hosteller,No,8.36,Active
+STU0129,1RV25CY029,Medha Swamy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,No,9.31,Active
+STU0130,1RV25CY030,Advait Khan,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,9.90,Active
+STU0131,1RV25CY031,Raghav Nair,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,Cat-1,Hosteller,No,7.77,Active
+STU0132,1RV25CY032,Anirudh Rai,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,Cat-1,Day Scholar,Yes,7.84,Active
+STU0133,1RV25CY033,Bhumika Yadav,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,No,9.27,Active
+STU0134,1RV25CY034,Sachin Upadhyaya,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,No,9.74,Active
+STU0135,1RV25CY035,Tanya Kamath,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Hosteller,No,8.93,Active
+STU0136,1RV25CY036,Harini Singh,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,No,6.85,Active
+STU0137,1RV25CY037,Basavaraj Shetty,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,9.62,Active
+STU0138,1RV25CY038,Nandini Acharya,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,7.97,Active
+STU0139,1RV25CY039,Darshan Saxena,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,3A,Hosteller,No,5.70,Active
+STU0140,1RV25CY040,Janani Varma,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,Yes,6.97,Active
+STU0141,1RV25CY041,Sharath Nambiar,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,Management,Management,GM,Day Scholar,Yes,7.78,Active
+STU0142,1RV25CY042,Zaid Raman,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,2A,Day Scholar,Yes,9.25,Active
+STU0143,1RV25CY043,Chitra Thomas,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,5.50,Active
+STU0144,1RV25CY044,Joseph Yadav,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,Management,Management,GM,Hosteller,No,9.90,Active
+STU0145,1RV25CY045,Rakesh Murthy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,Yes,7.21,Active
+STU0146,1RV25CY046,Nikhil Varma,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,Yes,9.77,Active
+STU0147,1RV25CY047,Lavanya Reddy,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,7.42,Active
+STU0148,1RV25CY048,Disha Shetty,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Female,KCET,Regular,3B,Day Scholar,No,7.04,Active
+STU0149,1RV25CY049,Ganesh Varma,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,8.55,Active
+STU0150,1RV25CY050,Mahesh Hegde,CY,CSE (Cyber Security),B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.32,Active
+STU0151,1RV25CD001,Pranathi Iyer,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,Management,Management,GM,Hosteller,No,7.79,Active
+STU0152,1RV25CD002,Urvi Subramanian,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,8.77,Active
+STU0153,1RV25CD003,Atharv Shetty,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Hosteller,No,6.83,Active
+STU0154,1RV25CD004,Pavan George,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,Cat-1,Hosteller,No,7.09,Active
+STU0155,1RV25CD005,Isha Krishnan,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,KCET,Regular,SC,Hosteller,No,7.62,Active
+STU0156,1RV25CD006,Trisha Hebbar,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,9.86,Active
+STU0157,1RV25CD007,Madhav Mehta,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,6.87,Active
+STU0158,1RV25CD008,Naveen Poojary,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Hosteller,No,6.65,Active
+STU0159,1RV25CD009,Vihaan Pai,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Day Scholar,No,8.08,Active
+STU0160,1RV25CD010,Sandeep Shenoy,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,ST,Day Scholar,No,9.62,Active
+STU0161,1RV25CD011,Kabir Narayan,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,2A,Day Scholar,No,8.31,Active
+STU0162,1RV25CD012,Rishi Prasad,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,GM,Hosteller,No,7.99,Active
+STU0163,1RV25CD013,Farhan Kini,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Hosteller,No,9.13,Active
+STU0164,1RV25CD014,Navya Hiremath,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,KCET,Regular,3A,Hosteller,No,7.54,Active
+STU0165,1RV25CD015,Ritesh Yadav,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,3A,Day Scholar,Yes,9.32,Active
+STU0166,1RV25CD016,Tejaswini Banerjee,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,KCET,Regular,3A,Hosteller,No,7.29,Active
+STU0167,1RV25CD017,Shruti Pandey,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,KCET,Regular,GM,Day Scholar,Yes,7.46,Active
+STU0168,1RV25CD018,Vikram Fernandes,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,9.30,Active
+STU0169,1RV25CD019,Tanvi Ahmed,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,6.81,Active
+STU0170,1RV25CD020,Deepak Patil,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,No,7.94,Active
+STU0171,1RV25CD021,Dhruv Kulkarni,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,KCET,Regular,SC,Hosteller,No,9.90,Active
+STU0172,1RV25CD022,Dinesh Srinivasan,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,Management,Management,GM,Hosteller,No,7.95,Active
+STU0173,1RV25CD023,Ananya Lobo,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,Management,Management,GM,Day Scholar,Yes,6.76,Active
+STU0174,1RV25CD024,Isha Iyengar,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Female,COMEDK,Regular,GM,Hosteller,No,9.82,Active
+STU0175,1RV25CD025,Karthik Upadhyaya,CD,Computer Science & Design,B.E,2025,3,2026-27,A,Male,COMEDK,Regular,GM,Day Scholar,Yes,6.61,Active
+STU0176,1RV25CD026,Aishwarya Bhandari,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,SC,Day Scholar,No,9.35,Active
+STU0177,1RV25CD027,Ganesh Srinivasan,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Hosteller,No,9.65,Active
+STU0178,1RV25CD028,Yash Kamath,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,6.05,Active
+STU0179,1RV25CD029,Eshwar Upadhyaya,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,2A,Day Scholar,Yes,8.19,Active
+STU0180,1RV25CD030,Uday Kumar,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,No,9.90,Active
+STU0181,1RV25CD031,Nithin Sharma,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,3A,Hosteller,No,6.73,Active
+STU0182,1RV25CD032,Pooja Subramanian,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,SC,Hosteller,No,8.56,Active
+STU0183,1RV25CD033,Shreyas Yadav,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,2B,Hosteller,No,9.64,Active
+STU0184,1RV25CD034,Samuel Ahmed,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,No,7.49,Active
+STU0185,1RV25CD035,Hemanth Murthy,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.96,Active
+STU0186,1RV25CD036,Girish Nair,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Hosteller,No,9.34,Active
+STU0187,1RV25CD037,Vaishnavi Ahmed,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,Management,Management,GM,Hosteller,No,8.71,Active
+STU0188,1RV25CD038,Prajwal Patil,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,No,9.90,Active
+STU0189,1RV25CD039,Vaishnavi Tiwari,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Day Scholar,No,8.11,Active
+STU0190,1RV25CD040,Akash Banerjee,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.21,Active
+STU0191,1RV25CD041,Skanda Pandey,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,ST,Hosteller,No,9.47,Active
+STU0192,1RV25CD042,Bhavana Kumar,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,2A,Day Scholar,Yes,7.80,Active
+STU0193,1RV25CD043,Aditi Reddy,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,Yes,6.77,Active
+STU0194,1RV25CD044,Girish Rangan,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Day Scholar,No,8.43,Active
+STU0195,1RV25CD045,Likhita Raman,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Hosteller,No,6.65,Active
+STU0196,1RV25CD046,Rahul Ahmed,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,COMEDK,Regular,GM,Hosteller,No,8.21,Active
+STU0197,1RV25CD047,Imran Varma,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Male,KCET,Regular,GM,Day Scholar,Yes,8.79,Active
+STU0198,1RV25CD048,Disha Rangan,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,COMEDK,Regular,GM,Day Scholar,No,9.32,Active
+STU0199,1RV25CD049,Varsha Gowda,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,SC,Hosteller,No,7.73,Active
+STU0200,1RV25CD050,Jahnavi Kumar,CD,Computer Science & Design,B.E,2025,3,2026-27,B,Female,KCET,Regular,GM,Hosteller,No,8.92,Active

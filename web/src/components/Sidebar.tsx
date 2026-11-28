@@ -11,10 +11,10 @@ const links = [
   { href: "/chat-history", label: "Chat history", icon: "clock" },
 ] as const;
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const path = usePathname();
   return <nav className={styles.nav} aria-label="Workspace">
-    {links.map(link => <Link key={link.href} href={link.href} aria-current={path === link.href ? "page" : undefined}>
+    {links.map(link => <Link key={link.href} href={link.href} aria-current={path === link.href ? "page" : undefined} onClick={onNavigate}>
       <Icon name={link.icon} />{link.label}
     </Link>)}
   </nav>;

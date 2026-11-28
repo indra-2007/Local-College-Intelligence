@@ -181,12 +181,12 @@ def extract_sql(raw: str) -> str:
     # Try ```sql ... ``` block first
     match = re.search(r"```(?:sql)?\s*(SELECT.*?)```", raw, re.IGNORECASE | re.DOTALL)
     if match:
-        return match.group(1).strip().rstrip(";")
+        return match.group(1).strip().rstrip(";]").strip()
     # Fall back: grab everything from first SELECT to end of string
     match = re.search(r"(SELECT\b.*)", raw, re.IGNORECASE | re.DOTALL)
     if match:
-        return match.group(1).strip().rstrip(";")
-    return raw.strip()
+        return match.group(1).strip().rstrip(";]").strip()
+    return raw.strip().rstrip(";]").strip()
 
 
 # ─── Model Management Routes ──────────────────────────────────────────────────
@@ -484,16 +484,27 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
             "never return a full list of all students' private records.\n"
         )
 
-    history_block = llm_service.format_history(req.history, max_turns=4)
+    clean_history = []
+    if req.history:
+        for t in req.history:
+            c = str(t.get("content", ""))
+            if "SQL execution failed" in c:
+                c = c.split("SQL execution failed")[0].strip()
+            if c:
+                clean_history.append({"role": t.get("role"), "content": c})
+    history_block = llm_service.format_history(clean_history, max_turns=3)
     prompt = (
         "/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
         f"{role_note}"
-        "Rules: use ONLY column names from the schema above; pick the single best table whose columns match the question; "
+        "Rules: use ONLY exact column names from the schema above (including trailing underscores like el_score__max_40_ and attendance__); "
+        "pick the single best table whose columns match the question UNLESS asked for 'each course', 'every course', 'all courses', or 'across courses' — for multi-course attendance queries, ALWAYS use a single JOIN with a compact subquery uniting all 5 attendance tables:\n"
+        "  SELECT s.usn, s.student_name, s.current_cgpa, a.course_name, a.attendance__ FROM students_all_200 s JOIN (SELECT usn, course_name, attendance__ FROM attendance_ci234ai UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs233ai UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs235at UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs236at UNION ALL SELECT usn, course_name, attendance__ FROM attendance_ma231tf) a ON s.usn = a.usn WHERE s.usn = '...';\n"
         "prefer filtering directly on that table's own columns instead of subqueries; "
         "numeric columns compare as numbers (e.g. WHERE attendance__ < 80, not < '80%'); "
-        "CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0); ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values (e.g. (q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0), NEVER / 15 * 100 or / 100; "
-        "if the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns; never write a JOIN without an ON clause; "
+        "IMPORTANT: 'attendance__' is ALREADY a 0–100 percentage (e.g. 86 means 86%) — NEVER multiply or divide 'attendance__' by 100.0 or total_classes_held (use WHERE attendance__ < 75 and AVG(attendance__) directly; only use '* 100.0 / total_classes_held' with 'classes_attended'); "
+        "CRITICAL for SQLite integer division on marks: SQLite does integer division on integers (12 / 15 = 0); ALWAYS multiply by 100.0 FIRST and use .0 on divisors when dividing *_max_N_ sums by the SUM of their max values (e.g. (q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0), NEVER / 15 * 100 or / 100; "
+        "if the question is a follow-up: if it asks to 'check in every course', 'all courses', or a different course, expand to UNION ALL or switch to that course; otherwise reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns; never write a JOIN without an ON clause; "
         "no markdown, no comments; end with semicolon.\n\n"
         f"{history_block}"
         f"Question: {req.prompt}\n"
@@ -505,8 +516,8 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
             prompt=prompt,
             model=req.model,  # None = use shared active model
             temperature=0.0,
-            num_predict=120,
-            num_ctx=2048,
+            num_predict=450,
+            num_ctx=3072,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -531,15 +542,39 @@ def ask_sql(req: AskRequest, authorization: Optional[str] = Header(default=None)
 
     # Python executes — NOT the LLM
     conn = get_db()
+    generated_sql = llm_service.repair_sql_column_names(generated_sql, conn)
     try:
         result_df = pd.read_sql_query(generated_sql, conn)
     except Exception as e:
-        conn.close()
-        return {
-            "error": f"SQL execution failed: {e}",
-            "generated_sql": generated_sql,
-            "result": [],
-        }
+        err_msg = str(e)
+        if ("incomplete input" in err_msg or "syntax error" in err_msg) and any(
+            w in req.prompt.lower() for w in ("each course", "every course", "all courses", "across courses", "all 5")
+        ):
+            usn_m = re.search(r"1RV\d{2}[A-Z]{2}\d{3}", req.prompt.upper())
+            if usn_m:
+                recovered_sql = (
+                    "SELECT s.usn, s.student_name, s.current_cgpa, a.course_name, a.attendance__ "
+                    "FROM students_all_200 s JOIN ("
+                    "SELECT usn, course_name, attendance__ FROM attendance_ci234ai UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs233ai UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs235at UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs236at UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_ma231tf"
+                    f") a ON s.usn = a.usn WHERE s.usn = '{usn_m.group(0)}';"
+                )
+                try:
+                    result_df = pd.read_sql_query(recovered_sql, conn)
+                    generated_sql = recovered_sql
+                    err_msg = None
+                except Exception:
+                    pass
+        if err_msg:
+            conn.close()
+            return {
+                "error": f"SQL execution failed: {err_msg}",
+                "generated_sql": generated_sql,
+                "result": [],
+            }
     conn.close()
 
     clean_df = result_df.astype(object).where(pd.notnull(result_df), None)

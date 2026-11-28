@@ -76,11 +76,11 @@ def _is_safe_sql(sql: str) -> bool:
 def _extract_sql(raw: str) -> str:
     match = re.search(r"```(?:sql)?\s*(SELECT.*?)```", raw, re.IGNORECASE | re.DOTALL)
     if match:
-        return match.group(1).strip().rstrip(";")
+        return match.group(1).strip().rstrip(";]").strip()
     match = re.search(r"(SELECT\b.*)", raw, re.IGNORECASE | re.DOTALL)
     if match:
-        return match.group(1).strip().rstrip(";")
-    return raw.strip()
+        return match.group(1).strip().rstrip(";]").strip()
+    return raw.strip().rstrip(";]").strip()
 
 
 # ─── Step 1: Query Router ────────────────────────────────────────────────────
@@ -89,13 +89,19 @@ _DATA_SIGNALS = (
     "average", "avg", "mean", "count", "how many", "which students", "list students",
     "list all students", "top ", "lowest", "highest", "scored", "score", "cie marks",
     "total cie", "el score", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8",
-    "attendance %", "classes attended", "usn", "1rv", "branch", "section",
+    "attendance", "classes attended", "usn", "1rv", "branch", "section",
+    "cgpa", "hosteller", "kcet", "comedk", "admitted", "failed", "fail",
+    "bus_opted", "student", "students", "marks", "attendance__",
 )
 _DOC_SIGNALS = (
     "policy", "policies", "regulation", "regulations", "handbook", "circular",
-    "syllabus", "syllabi", "document", "threshold", "target", "attainment",
+    "syllabus", "syllabi", "document", "documents", "threshold", "target", "attainment",
     "eligibility", "eligible", "condonation", "scheme", "rule", "rules", "criteria",
     "stand for", "represent", "meaning", "definition", "consequence", "penalty",
+    "fee", "fees", "tuition", "quota", "passing", "standard", "standards",
+    "minimum", "cutoff", "hostel", "available", "semester", "credit", "credits",
+    "library", "borrow", "hours", "calendar", "timetable", "schedule", "scheduled",
+    "exam", "see", "see theory", "see practical", "pass", "fail criteria",
 )
 
 
@@ -106,29 +112,32 @@ def route_query(
     history: list[dict] | None = None,
 ) -> str:
     """
-    Use the LLM to classify the query as SQL_ONLY, RAG_ONLY, or HYBRID.
-    Returns one of the three constants.
-    Includes a deterministic safeguard so queries combining data/aggregation
-    signals with policy/document signals are never downgraded to RAG_ONLY.
-    Falls back to RAG_ONLY on any failure.
+    Fast query routing: evaluates deterministic keyword signals first (<1ms).
+    Falls back to LLM classification only for ambiguous queries.
     """
+    q_lower = question.lower()
+    has_data = any(sig in q_lower for sig in _DATA_SIGNALS) or any(t.lower() in q_lower for t in tables)
+    has_doc = any(sig in q_lower for sig in _DOC_SIGNALS)
+
+    # Fast path: instant classification without calling Ollama (saves 3–5 seconds)
+    if has_data and has_doc:
+        return HYBRID
+    if has_data and not has_doc:
+        return SQL_ONLY
+    if has_doc and not has_data:
+        return RAG_ONLY
+
+    # Fallback path: call LLM only for ambiguous/unrecognized queries
     sql_hint = ", ".join(tables) if tables else "none"
-    history_block = llm_service.format_history(history, max_turns=4)
+    history_block = llm_service.format_history(history, max_turns=2)
     prompt = (
         "/no_think Classify the user question for an institutional AI system.\n\n"
-        f"Available SQL tables: {sql_hint} (contain student records, attendance %, CIE marks Q1-Q8, EL scores, CO/PO tags, CGPA).\n"
-        "Available document types: regulations, handbooks, circulars, syllabi, CO-PO attainment targets, attendance policies, fee policies.\n\n"
-        "Return ONLY valid JSON with one key 'route' whose value is exactly one of: "
-        '"SQL_ONLY", "RAG_ONLY", "HYBRID".\n\n'
-        "Rules:\n"
-        '- SQL_ONLY: question asks ONLY for numbers/records/averages from tables (e.g. "average CIE marks per branch", "top 5 students by CGPA").\n'
-        '- RAG_ONLY: question asks ONLY about policies, rules, procedures, regulations, handbooks, syllabi, or definitions (no student numbers).\n'
-        '- HYBRID: question needs BOTH database numbers/averages/student scores AND policy/document/target context '
-        '(e.g. "who is below the minimum attendance threshold?", "what is the average CIE score on CO1/PO1 compared to the CO1 attainment target?").\n'
-        'If a question asks for averages, scores, or student lists AND compares them to a policy, threshold, target, or document, choose "HYBRID".\n\n'
+        f"Available SQL tables: {sql_hint}\n"
+        "Available documents: regulations, handbooks, circulars, syllabi, fee policies, hostel info.\n\n"
+        "Return ONLY JSON with one key 'route': exactly 'SQL_ONLY', 'RAG_ONLY', or 'HYBRID'.\n\n"
         f"{history_block}"
         f"Question: {question}\n\n"
-        'JSON response (only the JSON, nothing else):'
+        'JSON:'
     )
 
     route = RAG_ONLY
@@ -137,7 +146,7 @@ def route_query(
             prompt=prompt,
             model=model,
             temperature=0.0,
-            num_predict=30,
+            num_predict=20,
             num_ctx=1024,
         )
         raw = result.get("response", "").strip()
@@ -152,15 +161,6 @@ def route_query(
     except Exception:
         route = RAG_ONLY
 
-    # Deterministic safeguard: if both data signals and doc signals are present and tables exist,
-    # ensure we run HYBRID rather than dropping SQL or RAG.
-    if tables and route != HYBRID:
-        q_lower = question.lower()
-        has_data = any(sig in q_lower for sig in _DATA_SIGNALS)
-        has_doc = any(sig in q_lower for sig in _DOC_SIGNALS)
-        if has_data and has_doc:
-            return HYBRID
-
     return route
 
 
@@ -173,6 +173,7 @@ def run_sql(
     schema: str,
     model: str | None = None,
     history: list[dict] | None = None,
+    doc_hint: str = "",
 ) -> dict:
     """
     Generate and execute a SELECT query.
@@ -191,21 +192,33 @@ def run_sql(
             "never return a full list of all students' private records.\n"
         )
 
-    history_block = llm_service.format_history(history, max_turns=4)
+    clean_history = []
+    if history:
+        for t in history:
+            c = str(t.get("content", ""))
+            if "SQL execution failed" in c:
+                c = c.split("SQL execution failed")[0].strip()
+            if c:
+                clean_history.append({"role": t.get("role"), "content": c})
+    history_block = llm_service.format_history(clean_history, max_turns=3)
+    hint_block = f"Relevant policy/document context (use exact thresholds/rules from here if needed):\n{doc_hint}\n\n" if doc_hint else ""
     prompt = (
         f"/no_think SQLite expert. Output ONLY a SELECT SQL query — no explanation, no markdown.\n\n"
         f"Tables:\n{schema}\n\n"
+        f"{hint_block}"
         f"{role_note}"
         "Rules:\n"
-        "- Use ONLY column names from the schema above; pick the single best table whose columns match the question.\n"
+        "- Use ONLY exact column names from the schema above (including trailing underscores like el_score__max_40_ and attendance__); pick the single best table whose columns match the question UNLESS asked for 'each course', 'every course', 'all courses', or 'across courses'.\n"
+        "- CRITICAL for multi-course attendance queries: ALWAYS use a single JOIN with a compact subquery uniting all 5 attendance tables:\n"
+        "  SELECT s.usn, s.student_name, s.current_cgpa, a.course_name, a.attendance__ FROM students_all_200 s JOIN (SELECT usn, course_name, attendance__ FROM attendance_ci234ai UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs233ai UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs235at UNION ALL SELECT usn, course_name, attendance__ FROM attendance_cs236at UNION ALL SELECT usn, course_name, attendance__ FROM attendance_ma231tf) a ON s.usn = a.usn WHERE s.usn = '...';\n"
+        "  NEVER repeat the JOIN students_all_200 inside each UNION branch!\n"
         "- Prefer filtering directly on that table's own columns (e.g. WHERE branch = 'CSE') instead of subqueries to other tables.\n"
         "- Numeric columns compare as numbers.\n"
-        "- CRITICAL for percentage math & SQLite integer division: SQLite does integer division on integers (12 / 15 = 0!). "
-        "ALWAYS multiply by 100.0 FIRST and use .0 on divisors, dividing *_max_N_ sums by the SUM of their max values "
+        "- IMPORTANT: 'attendance__' is ALREADY a 0–100 percentage (e.g. 86 means 86%) — NEVER multiply or divide 'attendance__' by 100.0 or total_classes_held (use WHERE attendance__ < 75 and AVG(attendance__) directly; only use '* 100.0 / total_classes_held' with 'classes_attended').\n"
+        "- CRITICAL for SQLite integer division on marks: SQLite does integer division on integers (12 / 15 = 0!). "
+        "ALWAYS multiply by 100.0 FIRST and use .0 on divisors when dividing *_max_N_ sums by the SUM of their max values "
         "(e.g. AVG((q1_score__max_5_ + q5_score__max_10_) * 100.0 / 15.0)), NEVER write / 15 * 100 or / 100.\n"
-        "- If the question is a follow-up (e.g. 'give their attendance and admission type also', 'their names'), "
-        "reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns — "
-        "do NOT switch tables or add unnecessary JOINs unless the user asks for a different course/table.\n"
+        "- If the question is a follow-up: if it asks to 'check in every course', 'all courses', or a different course, expand to UNION ALL or switch to that course; otherwise reuse the SAME table and WHERE filter from the previous turn's [SQL: ...] and add the requested columns.\n"
         "- When asked 'in more than one course', 'more than N times', or 'at least N', aggregate/filter in SQL using GROUP BY student_name, usn HAVING COUNT(*) > 1 (or COUNT(DISTINCT course_name) > 1) so SQL returns ONLY the qualifying students and their counts/courses.\n"
         "- Never write a JOIN without a valid ON condition.\n"
         "- No markdown, no comments; end with semicolon.\n\n"
@@ -219,8 +232,8 @@ def run_sql(
             prompt=prompt,
             model=model,
             temperature=0.0,
-            num_predict=180,
-            num_ctx=4096,
+            num_predict=450,
+            num_ctx=3072,
         )
     except RuntimeError as e:
         return {"sql": None, "result": [], "columns": [], "row_count": 0, "error": str(e)}
@@ -236,12 +249,37 @@ def run_sql(
                 "error": "LLM did not produce a SELECT statement."}
 
     conn = _get_db()
+    sql = llm_service.repair_sql_column_names(sql, conn)
     try:
         df = pd.read_sql_query(sql, conn)
     except Exception as e:
-        conn.close()
-        return {"sql": sql, "result": [], "columns": [], "row_count": 0,
-                "error": f"SQL execution failed: {e}"}
+        err_msg = str(e)
+        # Auto-recovery for truncated multi-course queries
+        if ("incomplete input" in err_msg or "syntax error" in err_msg) and any(
+            w in question.lower() for w in ("each course", "every course", "all courses", "across courses", "all 5")
+        ):
+            usn_m = re.search(r"1RV\d{2}[A-Z]{2}\d{3}", question.upper())
+            if usn_m:
+                recovered_sql = (
+                    "SELECT s.usn, s.student_name, s.current_cgpa, a.course_name, a.attendance__ "
+                    "FROM students_all_200 s JOIN ("
+                    "SELECT usn, course_name, attendance__ FROM attendance_ci234ai UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs233ai UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs235at UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_cs236at UNION ALL "
+                    "SELECT usn, course_name, attendance__ FROM attendance_ma231tf"
+                    f") a ON s.usn = a.usn WHERE s.usn = '{usn_m.group(0)}';"
+                )
+                try:
+                    df = pd.read_sql_query(recovered_sql, conn)
+                    sql = recovered_sql
+                    err_msg = None
+                except Exception:
+                    pass
+        if err_msg:
+            conn.close()
+            return {"sql": sql, "result": [], "columns": [], "row_count": 0,
+                    "error": f"SQL execution failed: {err_msg}"}
     conn.close()
 
     clean_df = df.astype(object).where(pd.notnull(df), None)
@@ -389,12 +427,13 @@ def synthesize(
         "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite document sources as [filename › section] when you use them.\n"
+        "- NEVER invent [SQL: ...] blocks, database counts, or student numbers if [STRUCTURED DATA] is not present in the context.\n"
         "- If one source (SQL or Documents) returned 0 rows or is unavailable, STILL answer using the other source that IS available and explicitly mention the 0-row / unavailable part.\n"
         "- Only say 'I could not find this in the available data.' if NEITHER source contains relevant information.\n"
         "- Never invent numbers, dates, or rules.\n"
-        "- When listing students from the SQL result, include EVERY qualifying student from the SQL table without skipping anyone.\n"
+        "- If the SQL result has 15 or fewer rows, list every qualifying row. If it has more than 15 rows, state the exact total count and summarize/highlight key subsets (e.g., those below 75% vs 75–84%) rather than cutting off mid-list — the full table is already shown below.\n"
         f"- {route_instruction}\n"
-        "- Be concise: 3–8 sentences or a short list.\n"
+        "- Be direct and concise: answer immediately in 3–6 sentences or bullet points without filler preamble (e.g. do not write 'To answer the question, I will first...').\n"
         f"{combined_context}\n\n"
         f"{history_block}"
         f"Question ({role}): {question}\n\n"
@@ -406,8 +445,8 @@ def synthesize(
             prompt=prompt,
             model=model,
             temperature=0.1,
-            num_predict=350,
-            num_ctx=4096,
+            num_predict=320,
+            num_ctx=3072,
         )
     except RuntimeError as e:
         return f"[LLM error: {e}]"
@@ -643,18 +682,19 @@ def ask(
 
     # ── 1. Route classification ───────────────────────────────────────────────
     route = route_query(question, tables, model, history=history)
-    rag_query = llm_service.contextualize_search_query(question, history)
+    rag_query = llm_service.contextualize_search_query(question, history, model=model)
 
     # ── 2. Run sub-tasks (SQL and/or RAG; parallel when HYBRID) ──────────────
     sql_data: dict | None = None
     rag_data: dict | None = None
 
     if route == HYBRID:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            sql_future = pool.submit(run_sql, question, role, tables, schema, model, history)
-            rag_future = pool.submit(run_rag, rag_query, role)
-            sql_data = sql_future.result()
-            rag_data = rag_future.result()
+        rag_data = run_rag(rag_query, role)
+        doc_hint = "\n".join(
+            f"[{src}]: {text[:350]}"
+            for text, src, _, _ in (rag_data.get("chunks") or [])[:3]
+        )
+        sql_data = run_sql(question, role, tables, schema, model, history, doc_hint=doc_hint)
     elif route == SQL_ONLY:
         sql_data = run_sql(question, role, tables, schema, model, history)
     elif route == RAG_ONLY:

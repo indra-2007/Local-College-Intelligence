@@ -123,19 +123,21 @@
 }
 
 @media (max-width: 800px) {
-  .workspace { grid-template-columns: 100%; grid-template-rows: auto minmax(0,1fr); }
-  .rail { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "brand session" "nav nav"; gap: .65rem .6rem; border: 0; border-bottom: 1px solid var(--rule); padding: max(.65rem, env(safe-area-inset-top)) 1rem .6rem; }
-  .brand { grid-area: brand; gap: .5rem; }
-  .brand strong { font-size: 1.65rem; }
-  .brand small { font-size: .73rem; margin-top: .1rem; }
-  .door { flex-basis: 21px; height: 28px; }
-  .door::after { inset: 6px 5px 1px; }
-  .nav { grid-area: nav; display: flex; margin: 0; gap: .5rem; }
-  .nav a { flex: 1; min-height: 40px; justify-content: center; padding: .35rem .5rem; font-size: .88rem; }
-  .railPhoto { display: none; }
-  .railFooter { grid-area: session; padding: 0; border: 0; }
-  .railFooter > div { display: none; }
-  .pageHead { min-height: 3.8rem; }
+  .workspace { grid-template-columns: 100%; grid-template-rows: minmax(0,1fr); }
+  .workspace[data-nav="closed"] .rail { display: none; }
+  .workspace[data-nav="open"] .rail {
+    position: fixed; inset: 0 auto 0 0; z-index: 20;
+    width: min(18.5rem, 85vw); height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: max(1.25rem, env(safe-area-inset-top)) 1.1rem max(1rem, env(safe-area-inset-bottom));
+    border-right: 1px solid var(--rule);
+    box-shadow: 12px 0 36px rgba(0,0,0,.55);
+  }
+  .navBackdrop {
+    display: block; position: fixed; inset: 0; z-index: 19;
+    background: rgba(10, 11, 9, .62); border: 0; padding: 0;
+  }
+  .pageHead { min-height: 3.3rem; }
   .page { --gutter: clamp(.95rem,3vw,2rem); }
 }
 @media (max-height: 560px) {
@@ -168,7 +170,41 @@
 }
 @keyframes settlePhoto { from { opacity: .48; transform: scale(1.012); } to { opacity: .57; transform: scale(1); } }
 @media (max-width: 550px) {
-  .nav a { min-width: 0; gap: .3rem; font-size: .79rem; line-height: 1.15; text-align: center; }
+  .pageHead { min-height: 2.95rem; gap: .5rem; }
+  .pageHead h1 { font-size: clamp(1.18rem, 4.6vw, 1.5rem); }
+  .pageHead .ghost { min-height: 34px; padding: .3rem .65rem; font-size: .8rem; white-space: nowrap; }
+}
+
+.railTop { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.railClose, .navToggle {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 38px; height: 38px; padding: 0;
+  border: 1px solid var(--rule); border-radius: 10px;
+  background: #1b1c17; color: #e2d5c0;
+}
+.railClose:hover, .navToggle:hover { border-color: #ae8b66; background: #2a2720; color: var(--cream); }
+.navToggle {
+  position: absolute; z-index: 4;
+  top: 1.42rem;
+  left: calc(max(0px, (100% - 94rem) / 2) + clamp(1.15rem, 3.5vw, 4rem));
+}
+.navBackdrop { display: none; }
+.workspace[data-nav="closed"] { grid-template-columns: 0 minmax(0,1fr); }
+.workspace[data-nav="closed"] .rail { width: 0; min-width: 0; padding: 0; border-right: 0; overflow: hidden; visibility: hidden; }
+.workspace[data-nav="closed"] .pageHead { padding-left: 3.15rem; }
+@media (max-width: 800px) {
+  .workspace[data-nav="closed"] { grid-template-columns: 100%; }
+  .navToggle {
+    top: .45rem;
+    left: clamp(.95rem, 3vw, 2rem);
+    width: 36px; height: 36px;
+  }
+  .workspace[data-nav="closed"] .pageHead { padding-left: 2.85rem; }
+  .navBackdrop { display: block; }
+}
+@media (max-width: 550px) {
+  .navToggle { top: .36rem; width: 34px; height: 34px; }
+  .workspace[data-nav="closed"] .pageHead { padding-left: 2.7rem; }
 }
 
 .railHead { display: grid; justify-items: start; gap: .95rem; }
@@ -186,8 +222,3 @@
   .telemetry[open] .readings { animation: showReadings 160ms ease-out; }
 }
 @keyframes showReadings { from { opacity: .85; transform: translateY(-2px); } to { opacity: 1; transform: none; } }
-@media (max-width: 800px) {
-  .rail { overflow: visible; z-index: 3; }
-  .railHead { grid-area: brand; position: relative; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .25rem .5rem; }
-  .readings { position: absolute; z-index: 3; top: 100%; left: 0; width: min(14rem, calc(100vw - 2rem)); }
-}

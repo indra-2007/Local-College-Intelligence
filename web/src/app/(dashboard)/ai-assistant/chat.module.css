@@ -105,30 +105,31 @@
 }
 
 @media (max-width: 800px) {
-  .tools { padding-block: .7rem; }
-  .hero { min-height: clamp(13rem,30vh,20rem); }
-  .writeArea { padding-bottom: max(.85rem,env(safe-area-inset-bottom)); }
+  .tools { padding-block: .45rem; }
+  .hero { min-height: clamp(12rem,28vh,18rem); }
+  .writeArea { padding-top: .55rem; padding-bottom: max(.65rem,env(safe-area-inset-bottom)); }
 }
 @media (max-width: 550px) {
-  .tools { gap: .35rem; padding-block: .55rem; }
+  .tools { gap: .3rem; padding-block: .35rem; }
   .modes { width: 100%; }
-  .modes button { min-height: 37px; padding: .35rem .53rem; gap: .33rem; font-size: .82rem; }
-  .model { gap: .28rem; margin-left: auto; font-size: .74rem; }
+  .modes button { min-height: 33px; padding: .28rem .4rem; gap: .3rem; font-size: .79rem; }
+  .model { gap: .28rem; margin-left: auto; font-size: .73rem; }
   .model > svg { display: none; }
-  .retry { width: 30px; height: 34px; }
-  .select select { max-width: 8.5rem; }
-  .hero { min-height: 13.8rem; padding: 1.1rem; }
+  .retry { width: 30px; height: 32px; }
+  .select select { max-width: 8.5rem; padding: .34rem 1.4rem .34rem .45rem; }
+  .hero { min-height: 11.2rem; padding: .95rem; }
   .photograph { object-position: 74% 52%; }
   .hero::after { background: linear-gradient(90deg,rgba(8,10,8,.7),rgba(8,10,8,.4) 55%,rgba(8,10,8,.06)); }
   .heroText { max-width: 91%; }
-  .hero h2 { font-size: clamp(2.35rem,10vw,3.2rem); }
-  .hero p { font-size: .87rem; line-height: 1.45; }
-  .roomLabel { font-size: .73rem; letter-spacing: .08em; }
-  .promptList { grid-template-columns: 1fr; gap: .4rem; }
-  .promptList button { min-height: 43px; padding: .45rem .65rem; font-size: .87rem; }
-  .empty { gap: .85rem; justify-content: stretch; padding-bottom: .6rem; }
-  .composer { padding: .65rem .6rem .5rem .75rem; }
-  .composer textarea { min-height: 2.6rem; }
+  .hero h2 { font-size: clamp(2rem,9vw,2.85rem); }
+  .hero p { font-size: .85rem; line-height: 1.42; }
+  .roomLabel { font-size: .72rem; letter-spacing: .08em; }
+  .promptList { grid-template-columns: 1fr; gap: .35rem; }
+  .promptList button { min-height: 39px; padding: .4rem .6rem; font-size: .84rem; }
+  .empty { gap: .65rem; justify-content: stretch; padding-bottom: .45rem; }
+  .writeArea { padding-top: .4rem; padding-bottom: max(.5rem,env(safe-area-inset-bottom)); }
+  .composer { padding: .5rem .55rem .42rem .7rem; }
+  .composer textarea { min-height: 2.2rem; }
   .composerFoot { gap: .45rem; }
   .keyboardHint { display: none; }
   .userTurn { max-width: 92%; }

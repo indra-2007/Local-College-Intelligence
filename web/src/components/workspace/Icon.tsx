@@ -21,6 +21,7 @@ const paths = {
   clock: "M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-4.5V12l3 2",
   copy: "M8 8h12v13H8zM5 16H3V3h12v2",
   edit: "m5 16-.6 4 4-.7L19 8.5 15.5 5 5 16Zm9-9.5 3.5 3.5",
+  sidebar: "M4 5.5h16v13H4zM9.5 5.5v13",
 } as const;
 
 export type IconName = keyof typeof paths;

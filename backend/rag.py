@@ -140,7 +140,7 @@ def answer_question(
     question: str,
     role: str,
     model: str | None = None,
-    k: int = 4,
+    k: int = 6,
     history: list[dict] | None = None,
 ) -> dict:
     """
@@ -169,18 +169,19 @@ def answer_question(
         raise ValueError(f"Invalid role '{role}'. Must be one of {VALID_ROLES}.")
 
     # ── 2. Embed question (contextualized for follow-ups in this chat) ────────
-    search_q = llm_service.contextualize_search_query(question, history)
+    search_q = llm_service.contextualize_search_query(question, history, model=model)
     embedder = _get_embedder()
     q_vec = embedder.encode([search_q], normalize_embeddings=True).tolist()
 
-    # ── 3. Query ChromaDB with role filter ────────────────────────────────────
+    # ── 3. Query ChromaDB with role filter (wider pool + keyword rerank) ─────
     # The where-filter runs INSIDE Chroma before any documents are returned.
     # Chunks that the role cannot access are never retrieved.
+    fetch_k = max(k * 3, 18)
     try:
         col = _get_collection()
         results = col.query(
             query_embeddings=q_vec,
-            n_results=k,
+            n_results=fetch_k,
             where={f"role_{role}": True},
         )
     except Exception as e:
@@ -189,16 +190,52 @@ def answer_question(
             "Have you run `python backend/ingest.py` to build the index?"
         )
 
-    docs = results["documents"][0]       # list of k strings
-    metas = results["metadatas"][0]      # list of k metadata dicts
-    dists = results["distances"][0]      # list of k floats (cosine distances)
+    raw_docs = results["documents"][0]
+    raw_metas = results["metadatas"][0]
+    raw_dists = results["distances"][0]
 
-    if not docs:
+    if not raw_docs:
         return {
             "answer": "I could not find this in the available documents.",
             "sources": [],
             "role": role,
         }
+
+    # Re-rank candidates using keyword overlap on source, section, and chunk text
+    q_tokens = {
+        w for w in re.findall(r"[a-z0-9]{2,}", search_q.lower())
+        if w not in {
+            "what", "is", "the", "of", "by", "on", "and", "to", "in", "for",
+            "are", "how", "with", "from", "that", "this", "which", "give", "also",
+        }
+    }
+    scored = []
+    for doc, m, d in zip(raw_docs, raw_metas, raw_dists):
+        hay = f"{m.get('source', '')} {m.get('section', '')} {doc[:500]}".lower()
+        hits = sum(1 for tok in q_tokens if tok in hay)
+        adj_score = d - min(hits * 0.04, 0.30)
+        scored.append((adj_score, doc, m, d))
+    scored.sort(key=lambda x: x[0])
+
+    # Keep at most 2 chunks per source first for diversity, then fill up to k if needed
+    picked = []
+    overflow = []
+    per_source: dict[str, int] = {}
+    for item in scored:
+        src = item[2]["source"]
+        if per_source.get(src, 0) < 2:
+            per_source[src] = per_source.get(src, 0) + 1
+            picked.append(item)
+            if len(picked) >= k:
+                break
+        else:
+            overflow.append(item)
+    if len(picked) < k:
+        picked.extend(overflow[: k - len(picked)])
+
+    docs = [item[1] for item in picked]
+    metas = [item[2] for item in picked]
+    dists = [item[3] for item in picked]
 
     # ── 4. Build sources list ─────────────────────────────────────────────────
     sources = [
@@ -221,6 +258,7 @@ def answer_question(
         "Answer ONLY from the context and previous turns in this chat provided below. Do not use any external knowledge.\n\n"
         "Rules:\n"
         "- Cite your sources as [filename > section] when you use information from a chunk.\n"
+        "- Never output placeholder labels like [Subject 1] or [Name]; list the actual names/codes from the context.\n"
         "- If the context does not contain a clear answer, say exactly: "
         "'I could not find this in the available documents.' Do not guess.\n"
         "- Never invent numbers, dates, or rules.\n"
@@ -241,8 +279,8 @@ def answer_question(
             prompt=prompt,
             model=model,  # None = active model
             temperature=0.1,
-            num_predict=200,
-            num_ctx=2048,
+            num_predict=400,
+            num_ctx=4096,
         )
         time_taken_ms = round((time.time() - t0) * 1000)
     except RuntimeError:
